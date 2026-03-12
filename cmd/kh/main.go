@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/keeperhub/cli/cmd"
+	"github.com/keeperhub/cli/internal/auth"
 	"github.com/keeperhub/cli/internal/config"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/version"
@@ -41,11 +42,17 @@ func main() {
 			envHost := os.Getenv("KH_HOST")
 			activeHost := hosts.ActiveHost(flagHost, envHost)
 
+			// Resolve token using the auth chain: KH_API_KEY > keyring > hosts.yml
+			resolved, err := auth.ResolveToken(activeHost)
+			if err != nil {
+				return nil, err
+			}
+
 			entry, _ := hosts.HostEntry(activeHost)
 
 			return khhttp.NewClient(khhttp.ClientOptions{
 				Host:       activeHost,
-				Token:      entry.Token,
+				Token:      resolved.Token,
 				Headers:    entry.Headers,
 				IOStreams:   ios,
 				AppVersion: version.Version,
