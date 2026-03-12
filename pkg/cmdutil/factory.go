@@ -1,9 +1,8 @@
 package cmdutil
 
 import (
-	"net/http"
-
 	"github.com/keeperhub/cli/internal/config"
+	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/iostreams"
 )
 
@@ -17,8 +16,9 @@ type Factory struct {
 	// Config returns the parsed application configuration.
 	Config func() (config.Config, error)
 
-	// HTTPClient returns a configured HTTP client for API requests.
-	HTTPClient func() (*http.Client, error)
+	// HTTPClient returns a configured KeeperHub HTTP client for API requests.
+	// The client automatically injects version headers and per-host credentials.
+	HTTPClient func() (*khhttp.Client, error)
 
 	// IOStreams provides the standard input/output streams.
 	IOStreams *iostreams.IOStreams

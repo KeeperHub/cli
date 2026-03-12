@@ -4,16 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/keeperhub/cli/cmd/auth"
-	"github.com/keeperhub/cli/cmd/completion"
-	"github.com/keeperhub/cli/cmd/config"
-	"github.com/keeperhub/cli/cmd/doctor"
-	"github.com/keeperhub/cli/cmd/execute"
-	cmdrun "github.com/keeperhub/cli/cmd/run"
-	"github.com/keeperhub/cli/cmd/serve"
-	cmdversion "github.com/keeperhub/cli/cmd/version"
-	"github.com/keeperhub/cli/cmd/workflow"
-	internalconfig "github.com/keeperhub/cli/internal/config"
+	"github.com/keeperhub/cli/cmd"
+	"github.com/keeperhub/cli/internal/config"
+	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/version"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/keeperhub/cli/pkg/iostreams"
@@ -21,36 +14,49 @@ import (
 )
 
 func main() {
-	streams := iostreams.System()
+	ios := iostreams.System()
+
+	// rootCmd is created first so the HTTPClient closure can read --host after flag parsing.
+	var rootCmd *cobra.Command
 
 	f := &cmdutil.Factory{
 		AppVersion: version.Version,
-		IOStreams:   streams,
-		Config: func() (internalconfig.Config, error) {
-			return internalconfig.ReadConfig()
+		IOStreams:   ios,
+		Config: func() (config.Config, error) {
+			return config.ReadConfig()
+		},
+		HTTPClient: func() (*khhttp.Client, error) {
+			hosts, err := config.ReadHosts()
+			if err != nil {
+				return nil, err
+			}
+
+			// Priority: --host flag > KH_HOST env > hosts.yml default > built-in default
+			var flagHost string
+			if rootCmd != nil {
+				if f := rootCmd.PersistentFlags().Lookup("host"); f != nil {
+					flagHost = f.Value.String()
+				}
+			}
+			envHost := os.Getenv("KH_HOST")
+			activeHost := hosts.ActiveHost(flagHost, envHost)
+
+			entry, _ := hosts.HostEntry(activeHost)
+
+			return khhttp.NewClient(khhttp.ClientOptions{
+				Host:       activeHost,
+				Token:      entry.Token,
+				Headers:    entry.Headers,
+				IOStreams:   ios,
+				AppVersion: version.Version,
+			}), nil
 		},
 	}
 
-	rootCmd := &cobra.Command{
-		Use:   "kh",
-		Short: "KeeperHub CLI",
-		Long:  "KeeperHub CLI - manage workflows, runs, and blockchain actions.",
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-
-	rootCmd.AddCommand(workflow.NewWorkflowCmd(f))
-	rootCmd.AddCommand(cmdrun.NewRunCmd(f))
-	rootCmd.AddCommand(execute.NewExecuteCmd(f))
-	rootCmd.AddCommand(auth.NewAuthCmd(f))
-	rootCmd.AddCommand(config.NewConfigCmd(f))
-	rootCmd.AddCommand(serve.NewServeCmd(f))
-	rootCmd.AddCommand(cmdversion.NewVersionCmd(f))
-	rootCmd.AddCommand(doctor.NewDoctorCmd(f))
-	rootCmd.AddCommand(completion.NewCompletionCmd())
+	rootCmd = cmd.NewRootCmd(f)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(streams.ErrOut, "Error: %s\n", err)
+		fmt.Fprintf(ios.ErrOut, "X %s\n", err.Error())
 		os.Exit(1)
 	}
 }
