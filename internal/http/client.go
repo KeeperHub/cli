@@ -1,6 +1,7 @@
 package khhttp
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -46,6 +47,12 @@ func NewClient(opts ClientOptions) *Client {
 	rc.RetryWaitMin = 1 * time.Second
 	rc.RetryWaitMax = 30 * time.Second
 	rc.Logger = nil
+	rc.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		if resp != nil && resp.StatusCode == http.StatusTooManyRequests {
+			return false, nil // do not retry rate limits
+		}
+		return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+	}
 
 	return &Client{
 		inner:      rc,

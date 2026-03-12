@@ -56,7 +56,10 @@ func main() {
 	rootCmd = cmd.NewRootCmd(f)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(ios.ErrOut, "X %s\n", err.Error())
-		os.Exit(1)
+		exitCode := cmdutil.ExitCodeForError(err)
+		if exitCode != 0 {
+			fmt.Fprintf(ios.ErrOut, "X %s\n", err.Error())
+		}
+		os.Exit(exitCode)
 	}
 }
