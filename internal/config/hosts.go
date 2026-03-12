@@ -85,3 +85,34 @@ func (h *HostsConfig) HostEntry(hostname string) (HostConfig, bool) {
 	entry, ok := h.Hosts[hostname]
 	return entry, ok
 }
+
+// SetHostToken updates the token for a specific host in the hosts config.
+// If the host entry doesn't exist, it creates one.
+func SetHostToken(host, token string) error {
+	hosts, err := ReadHosts()
+	if err != nil {
+		return err
+	}
+	if hosts.Hosts == nil {
+		hosts.Hosts = make(map[string]HostConfig)
+	}
+	entry := hosts.Hosts[host]
+	entry.Token = token
+	hosts.Hosts[host] = entry
+	return WriteHosts(hosts)
+}
+
+// ClearHostToken removes the token for a specific host.
+// Returns nil if the host is not in the config.
+func ClearHostToken(host string) error {
+	hosts, err := ReadHosts()
+	if err != nil {
+		return err
+	}
+	if entry, ok := hosts.Hosts[host]; ok {
+		entry.Token = ""
+		hosts.Hosts[host] = entry
+		return WriteHosts(hosts)
+	}
+	return nil
+}
