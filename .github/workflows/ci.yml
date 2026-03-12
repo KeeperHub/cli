@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -race -coverprofile=coverage.txt ./...
+      - name: Build binary (CGO_ENABLED=0)
+        run: CGO_ENABLED=0 go build -o bin/kh ./cmd/kh

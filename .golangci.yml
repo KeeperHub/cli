@@ -1,0 +1,19 @@
+version: "2"
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - revive
+formatters:
+  enable:
+    - gofmt
+issues:
+  exclude-rules:
+    - path: "_test.go"
+      linters:
+        - errcheck
