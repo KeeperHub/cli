@@ -1,6 +1,8 @@
 package cmd_test
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/keeperhub/cli/cmd"
@@ -108,4 +110,57 @@ func TestRootCmdParsesHostFlag(t *testing.T) {
 	hostVal, err := root.PersistentFlags().GetString("host")
 	require.NoError(t, err)
 	assert.Equal(t, "app-staging.keeperhub.com", hostVal)
+}
+
+func TestRootCmdHas18Subcommands(t *testing.T) {
+	f := newTestFactory()
+	root := cmd.NewRootCmd(f)
+	cmds := root.Commands()
+	assert.Equal(t, 18, len(cmds), "expected 18 subcommands registered on root")
+}
+
+func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
+	var buf bytes.Buffer
+	f := newTestFactory()
+	root := cmd.NewRootCmd(f)
+	root.SetOut(&buf)
+	root.SetErr(&buf)
+	root.SetArgs([]string{"--help"})
+	err := root.Execute()
+	assert.NoError(t, err)
+
+	helpOutput := buf.String()
+	expectedCommands := []string{
+		"workflow", "run", "execute", "project",
+		"tag", "api-key", "org", "action", "protocol",
+		"wallet", "template", "billing", "doctor",
+		"version", "auth", "config", "serve", "completion",
+	}
+	for _, cmdName := range expectedCommands {
+		assert.True(t, strings.Contains(helpOutput, cmdName),
+			"expected --help output to contain %q", cmdName)
+	}
+}
+
+func TestAllNounAliasesResolve(t *testing.T) {
+	aliases := []string{"wf", "r", "ex", "p", "t", "ak", "o", "a", "pr", "w", "tp", "b", "doc", "v"}
+
+	for _, alias := range aliases {
+		t.Run(alias, func(t *testing.T) {
+			f := newTestFactory()
+			root := cmd.NewRootCmd(f)
+			root.SetArgs([]string{alias, "--help"})
+			err := root.Execute()
+			assert.NoError(t, err, "alias %q should resolve without error", alias)
+		})
+	}
+}
+
+func TestAllSubcommandsHaveShortDescription(t *testing.T) {
+	f := newTestFactory()
+	root := cmd.NewRootCmd(f)
+	for _, subCmd := range root.Commands() {
+		assert.NotEmpty(t, subCmd.Short,
+			"command %q must have a non-empty Short description", subCmd.Use)
+	}
 }
