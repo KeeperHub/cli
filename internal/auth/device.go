@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/keeperhub/cli/internal/config"
@@ -168,4 +170,17 @@ func checkDeviceToken(ctx context.Context, baseURL, deviceCode string, headers m
 	}
 
 	return tokenResp, nil
+}
+
+// ReadTokenFromStdin reads a token from ios.In, trims whitespace, and returns it.
+func ReadTokenFromStdin(ios *iostreams.IOStreams) (string, error) {
+	data, err := io.ReadAll(ios.In)
+	if err != nil {
+		return "", fmt.Errorf("reading token from stdin: %w", err)
+	}
+	token := strings.TrimSpace(string(data))
+	if token == "" {
+		return "", errors.New("no token provided on stdin")
+	}
+	return token, nil
 }

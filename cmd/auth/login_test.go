@@ -11,16 +11,11 @@ import (
 )
 
 func TestLoginCmd_DefaultDeviceFlow(t *testing.T) {
-	// Isolate from real config.yml so ActiveHost returns the hardcoded default.
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	ios, buf, _, _ := iostreams.Test()
 
 	deviceCalled := false
-	auth.BrowserLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		t.Fatal("BrowserLogin should not be called in default flow")
-		return "", nil
-	}
 	auth.DeviceLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
 		deviceCalled = true
 		return "test-token", nil
@@ -47,48 +42,12 @@ func TestLoginCmd_DefaultDeviceFlow(t *testing.T) {
 	}
 }
 
-func TestLoginCmd_BrowserFlag(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	ios, _, _, _ := iostreams.Test()
-
-	browserCalled := false
-	auth.BrowserLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		browserCalled = true
-		return "test-token", nil
-	}
-	auth.DeviceLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		t.Fatal("DeviceLogin should not be called with --browser")
-		return "", nil
-	}
-	auth.SetTokenFunc = func(host, token string) error { return nil }
-	auth.FetchTokenInfoFunc = func(host, token string) (internalauth.TokenInfo, error) {
-		return internalauth.TokenInfo{Email: "user@example.com"}, nil
-	}
-
-	f := &cmdutil.Factory{IOStreams: ios}
-	cmd := auth.NewLoginCmd(f)
-	cmd.SetArgs([]string{"--browser"})
-
-	err := cmd.Execute()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !browserCalled {
-		t.Error("expected BrowserLogin to be called")
-	}
-}
-
 func TestLoginCmd_WithTokenFlag(t *testing.T) {
 	ios, buf, _, _ := iostreams.Test()
 	ios.In = strings.NewReader("my-token-from-stdin\n")
 
 	storeHost := ""
 	storeToken := ""
-	auth.BrowserLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		t.Fatal("BrowserLogin should not be called with --with-token")
-		return "", nil
-	}
 	auth.DeviceLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
 		t.Fatal("DeviceLogin should not be called with --with-token")
 		return "", nil
@@ -126,7 +85,6 @@ func TestLoginCmd_WithTokenFlag_EmptyStdin(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	ios.In = strings.NewReader("")
 
-	auth.BrowserLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) { return "", nil }
 	auth.DeviceLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) { return "", nil }
 	auth.SetTokenFunc = func(host, token string) error { return nil }
 	auth.FetchTokenInfoFunc = func(host, token string) (internalauth.TokenInfo, error) {
