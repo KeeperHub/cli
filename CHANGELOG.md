@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/KeeperHub/cli/compare/v0.2.0...v0.2.1) (2026-03-13)
+
+
+### Bug Fixes
+
+* **ci:** update golangci-lint config for v2 schema and regenerate docs ([9f66096](https://github.com/KeeperHub/cli/commit/9f66096456de48f8b135224d3736b8dc854c57a0))
+* **ci:** use PAT in release-please to trigger goreleaser on tags ([3c7b645](https://github.com/KeeperHub/cli/commit/3c7b64576089b01046ac9529c7fc1557a73cc0f8))
+
 ## [0.2.0](https://github.com/KeeperHub/cli/compare/v0.1.0...v0.2.0) (2026-03-13)
 
 
