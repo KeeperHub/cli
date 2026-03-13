@@ -37,7 +37,7 @@ func ReadConfig() (Config, error) {
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return Config{}, fmt.Errorf("Config file is invalid. Run 'kh auth login' to reset it.")
+		return Config{}, fmt.Errorf("config file is invalid, run 'kh auth login' to reset it")
 	}
 
 	return cfg, nil
