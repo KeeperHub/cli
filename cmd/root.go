@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/keeperhub/cli/cmd/action"
-	"github.com/keeperhub/cli/cmd/apikey"
 	"github.com/keeperhub/cli/cmd/auth"
 	"github.com/keeperhub/cli/cmd/billing"
 	"github.com/keeperhub/cli/cmd/completion"
@@ -40,7 +39,6 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.PersistentFlags().StringP("host", "H", "", "KeeperHub host (default: app.keeperhub.io)")
 
 	cmd.AddCommand(action.NewActionCmd(f))
-	cmd.AddCommand(apikey.NewAPIKeyCmd(f))
 	cmd.AddCommand(auth.NewAuthCmd(f))
 	cmd.AddCommand(billing.NewBillingCmd(f))
 	cmd.AddCommand(completion.NewCompletionCmd())

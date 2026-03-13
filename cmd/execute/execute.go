@@ -14,7 +14,6 @@ func NewExecuteCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.AddCommand(NewTransferCmd(f))
 	cmd.AddCommand(NewContractCallCmd(f))
-	cmd.AddCommand(NewCheckAndExecuteCmd(f))
 	cmd.AddCommand(NewStatusCmd(f))
 
 	return cmd

@@ -112,11 +112,11 @@ func TestRootCmdParsesHostFlag(t *testing.T) {
 	assert.Equal(t, "app-staging.keeperhub.com", hostVal)
 }
 
-func TestRootCmdHas18Subcommands(t *testing.T) {
+func TestRootCmdHas17Subcommands(t *testing.T) {
 	f := newTestFactory()
 	root := cmd.NewRootCmd(f)
 	cmds := root.Commands()
-	assert.Equal(t, 18, len(cmds), "expected 18 subcommands registered on root")
+	assert.Equal(t, 17, len(cmds), "expected 17 subcommands registered on root")
 }
 
 func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
@@ -132,7 +132,7 @@ func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
 	helpOutput := buf.String()
 	expectedCommands := []string{
 		"workflow", "run", "execute", "project",
-		"tag", "api-key", "org", "action", "protocol",
+		"tag", "org", "action", "protocol",
 		"wallet", "template", "billing", "doctor",
 		"version", "auth", "config", "serve", "completion",
 	}
@@ -142,8 +142,23 @@ func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
 	}
 }
 
+func TestRootCmdHelpDoesNotIncludeAPIKey(t *testing.T) {
+	var buf bytes.Buffer
+	f := newTestFactory()
+	root := cmd.NewRootCmd(f)
+	root.SetOut(&buf)
+	root.SetErr(&buf)
+	root.SetArgs([]string{"--help"})
+	err := root.Execute()
+	assert.NoError(t, err)
+
+	helpOutput := buf.String()
+	assert.False(t, strings.Contains(helpOutput, "api-key"),
+		"api-key should not appear in --help output")
+}
+
 func TestAllNounAliasesResolve(t *testing.T) {
-	aliases := []string{"wf", "r", "ex", "p", "t", "ak", "o", "a", "pr", "w", "tp", "b", "doc", "v"}
+	aliases := []string{"wf", "r", "ex", "p", "t", "o", "a", "pr", "w", "tp", "b", "doc", "v"}
 
 	for _, alias := range aliases {
 		t.Run(alias, func(t *testing.T) {
@@ -154,6 +169,14 @@ func TestAllNounAliasesResolve(t *testing.T) {
 			assert.NoError(t, err, "alias %q should resolve without error", alias)
 		})
 	}
+}
+
+func TestAKAliasDoesNotResolve(t *testing.T) {
+	f := newTestFactory()
+	root := cmd.NewRootCmd(f)
+	root.SetArgs([]string{"ak", "--help"})
+	err := root.Execute()
+	assert.Error(t, err, "alias 'ak' should not resolve after apikey removal")
 }
 
 func TestAllSubcommandsHaveShortDescription(t *testing.T) {
