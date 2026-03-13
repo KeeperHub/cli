@@ -8,6 +8,14 @@ linters:
     - unused
     - ineffassign
     - revive
+  settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintln
+        - fmt.Fprintf
+        - fmt.Fprint
+        - (io.Closer).Close
+        - (*net/http.Response).Body.Close
   exclusions:
     rules:
       - path: "_test.go"
