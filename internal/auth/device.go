@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/iostreams"
 )
 
@@ -64,7 +65,7 @@ func requestDeviceCode(ctx context.Context, host string) (deviceCodeResponse, er
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://"+host+"/api/auth/device/code", bytes.NewReader(body))
+		khhttp.BuildBaseURL(host)+"/api/auth/device/code", bytes.NewReader(body))
 	if err != nil {
 		return deviceCodeResponse{}, err
 	}
@@ -131,7 +132,7 @@ func checkDeviceToken(ctx context.Context, host, deviceCode string) (deviceToken
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://"+host+"/api/auth/device/token", bytes.NewReader(body))
+		khhttp.BuildBaseURL(host)+"/api/auth/device/token", bytes.NewReader(body))
 	if err != nil {
 		return deviceTokenResponse{}, err
 	}

@@ -83,7 +83,7 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("marshalling request: %w", err)
 			}
 
-			req, err := client.NewRequest(http.MethodPost, host+"/api/execute/contract-call", bytes.NewReader(bodyBytes))
+			req, err := client.NewRequest(http.MethodPost, khhttp.BuildBaseURL(host)+"/api/execute/contract-call", bytes.NewReader(bodyBytes))
 			if err != nil {
 				return err
 			}

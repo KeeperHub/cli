@@ -73,7 +73,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("marshalling request: %w", err)
 			}
 
-			req, err := client.NewRequest(http.MethodPost, host+"/api/execute/transfer", bytes.NewReader(bodyBytes))
+			req, err := client.NewRequest(http.MethodPost, khhttp.BuildBaseURL(host)+"/api/execute/transfer", bytes.NewReader(bodyBytes))
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,7 @@ func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID
 }
 
 func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStatusResponse, error) {
-	url := host + "/api/execute/" + executionID + "/status"
+	url := khhttp.BuildBaseURL(host) + "/api/execute/" + executionID + "/status"
 	req, err := client.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

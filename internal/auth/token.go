@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	khhttp "github.com/keeperhub/cli/internal/http"
 )
 
 // AuthMethod describes how the token was resolved.
@@ -64,7 +66,7 @@ type orgMembership struct {
 func FetchTokenInfo(host, token string) (TokenInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	req, err := http.NewRequest(http.MethodGet, "https://"+host+"/api/auth/get-session", nil)
+	req, err := http.NewRequest(http.MethodGet, khhttp.BuildBaseURL(host)+"/api/auth/get-session", nil)
 	if err != nil {
 		return TokenInfo{}, fmt.Errorf("creating session request: %w", err)
 	}
@@ -121,7 +123,7 @@ func FetchTokenInfo(host, token string) (TokenInfo, error) {
 }
 
 func fetchOrgDetails(client *http.Client, host, token, orgID string) (string, string) {
-	req, err := http.NewRequest(http.MethodGet, "https://"+host+"/api/organizations/"+orgID, nil)
+	req, err := http.NewRequest(http.MethodGet, khhttp.BuildBaseURL(host)+"/api/organizations/"+orgID, nil)
 	if err != nil {
 		return "", ""
 	}

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/iostreams"
 )
 
@@ -79,7 +80,7 @@ func BrowserLogin(host string, ios *iostreams.IOStreams) (string, error) {
 		}
 	}()
 
-	authURL := fmt.Sprintf("https://%s/api/auth/sign-in/social?provider=github&callbackURL=http://127.0.0.1:%d/callback", host, port)
+	authURL := fmt.Sprintf("%s/api/auth/sign-in/social?provider=github&callbackURL=http://127.0.0.1:%d/callback", khhttp.BuildBaseURL(host), port)
 	fmt.Fprintf(ios.Out, "Opening browser to authenticate...\n")
 
 	if err := browserOpener(authURL); err != nil {

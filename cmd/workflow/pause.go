@@ -56,7 +56,7 @@ func NewPauseCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			url := host + "/api/workflows/" + workflowID
+			url := khhttp.BuildBaseURL(host) + "/api/workflows/" + workflowID
 			req, err := client.NewRequest(http.MethodPatch, url, bytes.NewReader(bodyBytes))
 			if err != nil {
 				return err

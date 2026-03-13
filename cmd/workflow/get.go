@@ -45,7 +45,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 
 			workflowID := args[0]
 			host := cfg.DefaultHost
-			url := host + "/api/workflows/" + workflowID
+			url := khhttp.BuildBaseURL(host) + "/api/workflows/" + workflowID
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)
 			if err != nil {

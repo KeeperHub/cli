@@ -63,7 +63,7 @@ func NewRunCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			host := cfg.DefaultHost
 
-			execURL := host + "/api/workflow/" + workflowID + "/execute"
+			execURL := khhttp.BuildBaseURL(host) + "/api/workflow/" + workflowID + "/execute"
 			req, err := client.NewRequest(http.MethodPost, execURL, bytes.NewBufferString("{}"))
 			if err != nil {
 				return err
@@ -171,7 +171,7 @@ func runWaitLoop(f *cmdutil.Factory, client *khhttp.Client, host, executionID st
 }
 
 func fetchStatus(client *khhttp.Client, host, executionID string) (*statusResponse, error) {
-	statusURL := host + "/api/workflows/executions/" + executionID + "/status"
+	statusURL := khhttp.BuildBaseURL(host) + "/api/workflows/executions/" + executionID + "/status"
 	req, err := client.NewRequest(http.MethodGet, statusURL, nil)
 	if err != nil {
 		return nil, err

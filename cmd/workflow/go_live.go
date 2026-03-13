@@ -62,7 +62,7 @@ func NewGoLiveCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			url := host + "/api/workflows/" + workflowID + "/go-live"
+			url := khhttp.BuildBaseURL(host) + "/api/workflows/" + workflowID + "/go-live"
 			req, err := client.NewRequest(http.MethodPut, url, bytes.NewReader(bodyBytes))
 			if err != nil {
 				return err

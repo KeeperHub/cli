@@ -54,7 +54,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			host := cfg.DefaultHost
-			url := host + "/api/workflows?limit=" + strconv.Itoa(limit)
+			url := khhttp.BuildBaseURL(host) + "/api/workflows?limit=" + strconv.Itoa(limit)
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)
 			if err != nil {
