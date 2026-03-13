@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/KeeperHub/cli/compare/v0.3.0...v0.4.0) (2026-03-13)
+
+
+### Features
+
+* CLI output overhaul and bug fixes ([6c9fc3f](https://github.com/KeeperHub/cli/commit/6c9fc3f2a35e0977ef1258f155da7ba8e11af6ef))
+* CLI output overhaul and bug fixes ([9961bee](https://github.com/KeeperHub/cli/commit/9961bee82b919833d715f9330df35cd09de01ce6))
+
 ## [0.3.0](https://github.com/KeeperHub/cli/compare/v0.2.3...v0.3.0) (2026-03-13)
 
 
