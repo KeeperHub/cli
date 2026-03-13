@@ -47,8 +47,9 @@ func TestApplyJQFilter_Identity(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected map, got %T", result)
 	}
-	if m["x"] != 1 {
-		t.Errorf("expected x=1, got %v", m["x"])
+	// JSON round-trip converts int to float64; check value equality with float64.
+	if m["x"] != float64(1) {
+		t.Errorf("expected x=1, got %v (%T)", m["x"], m["x"])
 	}
 }
 

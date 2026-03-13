@@ -72,17 +72,3 @@ func TestWorkflowListHasLimitFlag(t *testing.T) {
 	t.Fatal("list subcommand not found")
 }
 
-func TestWorkflowListNotImplementedViaLsAlias(t *testing.T) {
-	ios, outBuf, _, _ := iostreams.Test()
-	f := &cmdutil.Factory{
-		AppVersion: "1.0.0",
-		IOStreams:   ios,
-	}
-
-	wfCmd := workflow.NewWorkflowCmd(f)
-	wfCmd.SetArgs([]string{"ls"})
-	err := wfCmd.Execute()
-	assert.NoError(t, err)
-	assert.True(t, strings.Contains(outBuf.String(), "not yet implemented"),
-		"expected 'not yet implemented' in output, got: %q", outBuf.String())
-}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/keeperhub/cli/cmd/workflow"
+	"github.com/keeperhub/cli/internal/config"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/keeperhub/cli/pkg/iostreams"
@@ -21,6 +22,7 @@ func newWFListFactory(server *httptest.Server, ios *iostreams.IOStreams) *cmduti
 		AppVersion: "1.0.0",
 		IOStreams:   ios,
 		HTTPClient: func() (*khhttp.Client, error) { return client, nil },
+		Config:     func() (config.Config, error) { return config.Config{DefaultHost: server.URL}, nil },
 	}
 }
 
@@ -119,8 +121,6 @@ func TestListCmd_JSONOutput(t *testing.T) {
 	f := newWFListFactory(server, ios)
 
 	wfCmd := workflow.NewWorkflowCmd(f)
-	wfCmd.PersistentFlags().Bool("json", false, "Output as JSON")
-	wfCmd.PersistentFlags().String("jq", "", "Filter JSON output with a jq expression")
 	wfCmd.SetArgs([]string{"ls", "--json"})
 	err := wfCmd.Execute()
 	require.NoError(t, err)
@@ -143,8 +143,6 @@ func TestListCmd_JQFilter(t *testing.T) {
 	f := newWFListFactory(server, ios)
 
 	wfCmd := workflow.NewWorkflowCmd(f)
-	wfCmd.PersistentFlags().Bool("json", false, "Output as JSON")
-	wfCmd.PersistentFlags().String("jq", "", "Filter JSON output with a jq expression")
 	wfCmd.SetArgs([]string{"ls", "--jq", ".[0].name"})
 	err := wfCmd.Execute()
 	require.NoError(t, err)
