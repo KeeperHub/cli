@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const stagingHost = "app.keeperhub.io"
+const stagingHost = "app.keeperhub.com"
 
 // TestAuthLoginFlow verifies that a token can be resolved for the staging host.
 // Skips if KH_TEST_EMAIL and KH_TEST_PASSWORD are not set.

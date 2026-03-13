@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultHost = "app.keeperhub.io"
+const defaultHost = "app.keeperhub.com"
 
 // HostConfig holds per-host authentication and connection details.
 type HostConfig struct {
@@ -65,7 +65,7 @@ func WriteHosts(cfg HostsConfig) error {
 }
 
 // ActiveHost resolves the active host using the priority chain:
-// flagHost > envHost > h.DefaultHost > config.yml DefaultHost > "app.keeperhub.io"
+// flagHost > envHost > h.DefaultHost > config.yml DefaultHost > "app.keeperhub.com"
 func (h *HostsConfig) ActiveHost(flagHost, envHost string) string {
 	if flagHost != "" {
 		return flagHost

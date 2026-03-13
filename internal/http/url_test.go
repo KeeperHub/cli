@@ -25,13 +25,13 @@ func TestBuildBaseURL(t *testing.T) {
 		},
 		{
 			name:  "https scheme preserved unchanged",
-			input: "https://app.keeperhub.io",
-			want:  "https://app.keeperhub.io",
+			input: "https://app.keeperhub.com",
+			want:  "https://app.keeperhub.com",
 		},
 		{
 			name:  "bare domain adds https scheme",
-			input: "app.keeperhub.io",
-			want:  "https://app.keeperhub.io",
+			input: "app.keeperhub.com",
+			want:  "https://app.keeperhub.com",
 		},
 		{
 			name:  "bare hostname trailing slash stripped",

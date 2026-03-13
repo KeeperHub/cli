@@ -24,7 +24,7 @@ Manage tags
 ### Options inherited from parent commands
 
 ```
-  -H, --host string   KeeperHub host (default: app.keeperhub.io)
+  -H, --host string   KeeperHub host (default: app.keeperhub.com)
       --no-color      Disable color output
 ```
 

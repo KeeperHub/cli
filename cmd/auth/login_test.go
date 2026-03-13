@@ -42,7 +42,7 @@ func TestLoginCmd_BrowserFlow(t *testing.T) {
 		t.Error("expected BrowserLogin to be called")
 	}
 	out := buf.String()
-	if !strings.Contains(out, "app.keeperhub.io") {
+	if !strings.Contains(out, "app.keeperhub.com") {
 		t.Errorf("expected host in output, got: %q", out)
 	}
 }

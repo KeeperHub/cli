@@ -134,7 +134,7 @@ func getHost(f *cmdutil.Factory) (string, error) {
 	}
 	host := cfg.DefaultHost
 	if host == "" {
-		host = "app.keeperhub.io"
+		host = "app.keeperhub.com"
 	}
 	return host, nil
 }

@@ -46,7 +46,7 @@ func TestBrowserLogin_CapturesToken(t *testing.T) {
 	errCh := make(chan error, 1)
 
 	go func() {
-		tok, err := BrowserLogin("app.keeperhub.io", ios)
+		tok, err := BrowserLogin("app.keeperhub.com", ios)
 		if err != nil {
 			errCh <- err
 			return
@@ -79,7 +79,7 @@ func TestBrowserLogin_CapturesToken(t *testing.T) {
 		t.Fatal("timed out waiting for BrowserLogin to return")
 	}
 
-	stored, err := GetToken("app.keeperhub.io")
+	stored, err := GetToken("app.keeperhub.com")
 	require.NoError(t, err)
 	require.Equal(t, "test_token_123", stored)
 }
@@ -92,7 +92,7 @@ func TestBrowserLogin_NoTokenInCallback(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		_, err := BrowserLogin("app.keeperhub.io", ios)
+		_, err := BrowserLogin("app.keeperhub.com", ios)
 		errCh <- err
 	}()
 

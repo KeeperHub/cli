@@ -9,7 +9,7 @@ func NewEnvironmentTopic() *cobra.Command {
 		Use:   "environment",
 		Short: "Environment variables used by kh",
 		Long: `KH_HOST
-  Override the KeeperHub API host. Default: app.keeperhub.io
+  Override the KeeperHub API host. Default: app.keeperhub.com
   Example: KH_HOST=https://kh.mycompany.io kh workflow list
 
 KH_API_KEY

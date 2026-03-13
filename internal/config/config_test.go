@@ -13,8 +13,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.ConfigVersion != "1" {
 		t.Errorf("ConfigVersion: got %q, want %q", cfg.ConfigVersion, "1")
 	}
-	if cfg.DefaultHost != "app.keeperhub.io" {
-		t.Errorf("DefaultHost: got %q, want %q", cfg.DefaultHost, "app.keeperhub.io")
+	if cfg.DefaultHost != "app.keeperhub.com" {
+		t.Errorf("DefaultHost: got %q, want %q", cfg.DefaultHost, "app.keeperhub.com")
 	}
 }
 

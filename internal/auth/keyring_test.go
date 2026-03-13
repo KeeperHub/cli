@@ -32,10 +32,10 @@ func overrideKeyring(t *testing.T) {
 func TestSetGetToken(t *testing.T) {
 	overrideKeyring(t)
 
-	err := SetToken("app.keeperhub.io", "tok_abc123")
+	err := SetToken("app.keeperhub.com", "tok_abc123")
 	require.NoError(t, err)
 
-	got, err := GetToken("app.keeperhub.io")
+	got, err := GetToken("app.keeperhub.com")
 	require.NoError(t, err)
 	require.Equal(t, "tok_abc123", got)
 }
@@ -51,11 +51,11 @@ func TestGetToken_Missing(t *testing.T) {
 func TestDeleteToken(t *testing.T) {
 	overrideKeyring(t)
 
-	require.NoError(t, SetToken("app.keeperhub.io", "tok_xyz"))
+	require.NoError(t, SetToken("app.keeperhub.com", "tok_xyz"))
 
-	require.NoError(t, DeleteToken("app.keeperhub.io"))
+	require.NoError(t, DeleteToken("app.keeperhub.com"))
 
-	got, err := GetToken("app.keeperhub.io")
+	got, err := GetToken("app.keeperhub.com")
 	require.NoError(t, err)
 	require.Equal(t, "", got)
 }

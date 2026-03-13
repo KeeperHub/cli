@@ -13,7 +13,7 @@ func NewConfigCmd(f *cmdutil.Factory) *cobra.Command {
   kh config ls
 
   # Set the default host
-  kh config set default_host app.keeperhub.io`,
+  kh config set default_host app.keeperhub.com`,
 	}
 
 	cmd.AddCommand(NewSetCmd(f))

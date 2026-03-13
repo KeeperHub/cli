@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testHost = "app.keeperhub.io"
+const testHost = "app.keeperhub.com"
 
 func setupEmptyKeyring(t *testing.T) {
 	t.Helper()

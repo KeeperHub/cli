@@ -19,7 +19,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		ConfigVersion: "1",
-		DefaultHost:   "app.keeperhub.io",
+		DefaultHost:   "app.keeperhub.com",
 	}
 }
 

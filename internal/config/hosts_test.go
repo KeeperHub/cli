@@ -16,8 +16,8 @@ func TestActiveHostFallback(t *testing.T) {
 
 	h := config.HostsConfig{}
 	got := h.ActiveHost("", "")
-	if got != "app.keeperhub.io" {
-		t.Errorf("ActiveHost fallback: got %q, want %q", got, "app.keeperhub.io")
+	if got != "app.keeperhub.com" {
+		t.Errorf("ActiveHost fallback: got %q, want %q", got, "app.keeperhub.com")
 	}
 }
 
@@ -102,11 +102,11 @@ func TestReadHostsMissingFile(t *testing.T) {
 func TestHostEntryLookup(t *testing.T) {
 	h := config.HostsConfig{
 		Hosts: map[string]config.HostConfig{
-			"app.keeperhub.io": {User: "user@example.com"},
+			"app.keeperhub.com": {User: "user@example.com"},
 		},
 	}
 
-	entry, ok := h.HostEntry("app.keeperhub.io")
+	entry, ok := h.HostEntry("app.keeperhub.com")
 	if !ok {
 		t.Fatal("expected to find host entry")
 	}
