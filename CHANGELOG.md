@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.3](https://github.com/KeeperHub/cli/compare/v0.2.2...v0.2.3) (2026-03-13)
+
+
+### Bug Fixes
+
+* change default host from app.keeperhub.io to app.keeperhub.com ([b90b587](https://github.com/KeeperHub/cli/commit/b90b587fbb5f0c8b9f8ccaca527afe1945cdf695))
+* change default host from app.keeperhub.io to app.keeperhub.com ([ed08236](https://github.com/KeeperHub/cli/commit/ed08236e3d0c278d5ab7ec9ae7735bd58ce608d7))
+* set homebrew cask name to kh ([574e7ba](https://github.com/KeeperHub/cli/commit/574e7baf1c8663396e9f67b59041c4394b90132b))
+* set homebrew cask name to kh instead of defaulting to cli ([9c86036](https://github.com/KeeperHub/cli/commit/9c86036a133665e1fe394a1bb5e006a54d4657b7))
+
 ## [0.2.2](https://github.com/KeeperHub/cli/compare/v0.2.1...v0.2.2) (2026-03-13)
 
 
