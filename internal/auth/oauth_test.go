@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// installBrowserCapture overrides browserOpener so it sends the auth URL on a channel.
+// installBrowserCapture overrides browserOpener so it sends the URL on a channel.
 // Must be called BEFORE the BrowserLogin goroutine is started.
 func installBrowserCapture(t *testing.T) <-chan string {
 	t.Helper()
@@ -21,33 +22,31 @@ func installBrowserCapture(t *testing.T) <-chan string {
 		return nil
 	}
 	t.Cleanup(func() { browserOpener = openBrowser })
-
-	// Override socialSignInURLFunc to return callbackURL as the "redirect URL"
-	// so the browser opener receives a URL containing the callback port.
-	origSocial := socialSignInURLFunc
-	socialSignInURLFunc = func(baseURL, provider, callbackURL string) (string, error) {
-		return baseURL + "/api/auth/sign-in/social?provider=" + provider + "&callbackURL=" + callbackURL, nil
-	}
-	t.Cleanup(func() { socialSignInURLFunc = origSocial })
-
 	return ch
 }
 
-func extractCallbackPort(authURL string) string {
-	// authURL looks like: https://host/api/auth/sign-in/social?provider=github&callbackURL=http://127.0.0.1:PORT/callback
-	idx := strings.Index(authURL, "callbackURL=")
-	if idx < 0 {
+var portPattern = regexp.MustCompile(`port=(\d+)`)
+var noncePattern = regexp.MustCompile(`nonce=([a-f0-9]{32})`)
+
+func extractPort(cliAuthURL string) string {
+	m := portPattern.FindStringSubmatch(cliAuthURL)
+	if len(m) < 2 {
 		return ""
 	}
-	cb := authURL[idx+len("callbackURL="):]
-	portIdx := strings.LastIndex(cb, ":")
-	slashIdx := strings.Index(cb[portIdx:], "/")
-	return cb[portIdx+1 : portIdx+slashIdx]
+	return m[1]
+}
+
+func extractNonce(cliAuthURL string) string {
+	m := noncePattern.FindStringSubmatch(cliAuthURL)
+	if len(m) < 2 {
+		return ""
+	}
+	return m[1]
 }
 
 func TestBrowserLogin_CapturesToken(t *testing.T) {
 	overrideKeyring(t)
-	urlCh := installBrowserCapture(t) // set before goroutine starts
+	urlCh := installBrowserCapture(t)
 
 	ios, _, _, _ := iostreams.Test()
 
@@ -63,18 +62,24 @@ func TestBrowserLogin_CapturesToken(t *testing.T) {
 		tokenCh <- tok
 	}()
 
-	// Wait for browser opener to be called.
-	var authURL string
+	var cliAuthURL string
 	select {
-	case authURL = <-urlCh:
+	case cliAuthURL = <-urlCh:
 	case <-time.After(5 * time.Second):
 		t.Fatal("browser opener was never called")
 	}
 
-	port := extractCallbackPort(authURL)
+	require.Contains(t, cliAuthURL, "/cli-auth")
+	require.Contains(t, cliAuthURL, "provider=github")
+
+	port := extractPort(cliAuthURL)
 	require.NotEmpty(t, port)
 
-	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%s/callback?token=test_token_123", port))
+	nonce := extractNonce(cliAuthURL)
+	require.NotEmpty(t, nonce, "nonce must be present in auth URL")
+
+	// Simulate the relay redirecting to the CLI's local callback server.
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%s/callback?token=test_token_123&nonce=%s", port, nonce))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	resp.Body.Close()
@@ -93,6 +98,43 @@ func TestBrowserLogin_CapturesToken(t *testing.T) {
 	require.Equal(t, "test_token_123", stored)
 }
 
+func TestBrowserLogin_BadNonce(t *testing.T) {
+	overrideKeyring(t)
+	urlCh := installBrowserCapture(t)
+
+	ios, _, _, _ := iostreams.Test()
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := BrowserLogin("app.keeperhub.com", ios)
+		errCh <- err
+	}()
+
+	var cliAuthURL string
+	select {
+	case cliAuthURL = <-urlCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("browser opener was never called")
+	}
+
+	port := extractPort(cliAuthURL)
+	require.NotEmpty(t, port)
+
+	// Send a request with a wrong nonce.
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%s/callback?token=stolen&nonce=bad", port))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	resp.Body.Close()
+
+	select {
+	case err := <-errCh:
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "nonce")
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for BrowserLogin to return error")
+	}
+}
+
 func TestBrowserLogin_NoTokenInCallback(t *testing.T) {
 	overrideKeyring(t)
 	urlCh := installBrowserCapture(t)
@@ -105,17 +147,20 @@ func TestBrowserLogin_NoTokenInCallback(t *testing.T) {
 		errCh <- err
 	}()
 
-	var authURL string
+	var cliAuthURL string
 	select {
-	case authURL = <-urlCh:
+	case cliAuthURL = <-urlCh:
 	case <-time.After(5 * time.Second):
 		t.Fatal("browser opener was never called")
 	}
 
-	port := extractCallbackPort(authURL)
+	port := extractPort(cliAuthURL)
+	nonce := extractNonce(cliAuthURL)
 	require.NotEmpty(t, port)
+	require.NotEmpty(t, nonce)
 
-	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%s/callback", port))
+	// Valid nonce but no token.
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%s/callback?nonce=%s", port, nonce))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	resp.Body.Close()

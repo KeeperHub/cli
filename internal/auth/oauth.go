@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -20,9 +20,6 @@ import (
 
 // browserOpener opens a URL in the default browser. Tests override this.
 var browserOpener = openBrowser
-
-// socialSignInURLFunc fetches the OAuth redirect URL from the server. Tests override this.
-var socialSignInURLFunc = fetchSocialSignInURL
 
 func openBrowser(url string) error {
 	var cmd string
@@ -41,15 +38,33 @@ func openBrowser(url string) error {
 	return exec.Command(cmd, args...).Start()
 }
 
+func generateNonce() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
 // BrowserLogin starts a localhost OAuth callback server, opens the browser to
-// authenticate via GitHub OAuth, captures the session token from the callback,
-// stores it in the keyring, and returns the token.
+// the server's /cli-auth page which initiates GitHub OAuth from the same origin,
+// captures the session token from the callback, stores it in the keyring,
+// and returns the token.
+//
+// A one-time nonce is generated and threaded through the entire flow to prevent
+// an attacker from constructing a valid relay URL without knowledge of the nonce.
 func BrowserLogin(host string, ios *iostreams.IOStreams) (string, error) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return "", fmt.Errorf("starting callback server: %w", err)
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
+
+	nonce, err := generateNonce()
+	if err != nil {
+		_ = listener.Close()
+		return "", fmt.Errorf("generating nonce: %w", err)
+	}
 
 	tokenCh := make(chan string, 1)
 	errCh := make(chan error, 1)
@@ -62,9 +77,14 @@ func BrowserLogin(host string, ios *iostreams.IOStreams) (string, error) {
 	}
 
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("nonce") != nonce {
+			http.Error(w, "Invalid nonce", http.StatusForbidden)
+			errCh <- errors.New("callback nonce mismatch")
+			return
+		}
+
 		token := r.URL.Query().Get("token")
 		if token == "" {
-			// Try cookie fallback
 			if cookie, cookieErr := r.Cookie("better-auth.session_token"); cookieErr == nil {
 				token = cookie.Value
 			}
@@ -85,19 +105,16 @@ func BrowserLogin(host string, ios *iostreams.IOStreams) (string, error) {
 		}
 	}()
 
-	// Better Auth's /sign-in/social is a POST endpoint that returns the OAuth redirect URL.
-	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
+	// Open the server-side /cli-auth page. It POSTs to /api/auth/sign-in/social
+	// from the same origin (no CORS), using /api/cli-auth/relay as the OAuth
+	// callbackURL so the server can read the HttpOnly session cookie and forward
+	// the token to our local callback server.
 	baseURL := khhttp.BuildBaseURL(host)
-
-	authURL, postErr := socialSignInURLFunc(baseURL, "github", callbackURL)
-	if postErr != nil {
-		_ = srv.Close()
-		return "", fmt.Errorf("initiating social sign-in: %w", postErr)
-	}
+	authPageURL := fmt.Sprintf("%s/cli-auth?provider=github&port=%d&nonce=%s", baseURL, port, nonce)
 
 	fmt.Fprintf(ios.Out, "Opening browser to authenticate...\n")
 
-	if err := browserOpener(authURL); err != nil {
+	if err := browserOpener(authPageURL); err != nil {
 		_ = srv.Close()
 		return "", fmt.Errorf("opening browser: %w", err)
 	}
@@ -125,41 +142,6 @@ func BrowserLogin(host string, ios *iostreams.IOStreams) (string, error) {
 	}
 
 	return token, nil
-}
-
-// fetchSocialSignInURL POSTs to Better Auth's /sign-in/social endpoint and
-// returns the OAuth provider redirect URL from the JSON response.
-func fetchSocialSignInURL(baseURL, provider, callbackURL string) (string, error) {
-	body, err := json.Marshal(map[string]string{
-		"provider":    provider,
-		"callbackURL": callbackURL,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := http.Post(baseURL+"/api/auth/sign-in/social", "application/json", bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("server returned %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var result struct {
-		URL      string `json:"url"`
-		Redirect bool   `json:"redirect"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("decoding response: %w", err)
-	}
-	if result.URL == "" {
-		return "", errors.New("server returned empty redirect URL")
-	}
-	return result.URL, nil
 }
 
 // ReadTokenFromStdin reads a token from ios.In, trims whitespace, and returns it.
