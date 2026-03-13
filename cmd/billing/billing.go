@@ -12,6 +12,9 @@ func NewBillingCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases: []string{"b"},
 	}
 
+	cmd.PersistentFlags().Bool("json", false, "Output as JSON")
+	cmd.PersistentFlags().String("jq", "", "Filter JSON output with a jq expression")
+
 	cmd.AddCommand(NewStatusCmd(f))
 	cmd.AddCommand(NewUsageCmd(f))
 
