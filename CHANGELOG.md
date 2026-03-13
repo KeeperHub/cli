@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1](https://github.com/KeeperHub/cli/compare/v0.2.0...v0.2.1) (2026-03-13)
+
+
+### Bug Fixes
+
+* **ci:** exclude fmt.Fprint* and Body.Close from errcheck ([b4f8bd3](https://github.com/KeeperHub/cli/commit/b4f8bd31168b2f08d86ea19ccc89ee2687b52bba))
+* **ci:** fix remaining ST1005 errors and update test assertion ([986f7d0](https://github.com/KeeperHub/cli/commit/986f7d0d0b124822f135836f3984be440daf9a45))
+* **ci:** remove defunct gosimple linter and fix docs-check working dir ([783ae20](https://github.com/KeeperHub/cli/commit/783ae204b435fd4122fb656912b0ef042971f043))
+* **ci:** resolve all lint errors across codebase ([ee08b00](https://github.com/KeeperHub/cli/commit/ee08b009d3338bcdd3cb475493f439af0296e0f0))
+* **ci:** update golangci-lint config and regenerate docs ([5fbaece](https://github.com/KeeperHub/cli/commit/5fbaecee910cae944b7aa4bc4d46eac1cc174ea8))
+* **ci:** update golangci-lint config for v2 schema and regenerate docs ([c02fbe5](https://github.com/KeeperHub/cli/commit/c02fbe504db5fe7409747c9206b5cf2aada0cf36))
+* **ci:** use default:none and enable only core linters ([44b2555](https://github.com/KeeperHub/cli/commit/44b25557f46b3781e2e9f37b280f6107bf6878cf))
+* **ci:** use PAT in release-please to trigger goreleaser ([b8f88d5](https://github.com/KeeperHub/cli/commit/b8f88d5b7878718a94809c250e2ddf6550a70b3f))
+* **ci:** use PAT in release-please to trigger goreleaser on tags ([3c7b645](https://github.com/KeeperHub/cli/commit/3c7b64576089b01046ac9529c7fc1557a73cc0f8))
+
 ## [0.2.0](https://github.com/KeeperHub/cli/compare/v0.1.0...v0.2.0) (2026-03-13)
 
 
