@@ -44,7 +44,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/organizations"
+			url := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/organizations"
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)
 			if err != nil {

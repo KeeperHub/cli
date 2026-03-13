@@ -54,7 +54,7 @@ func NewPauseCmd(f *cmdutil.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			bodyBytes, err := json.Marshal(map[string]bool{"enabled": false})
 			if err != nil {

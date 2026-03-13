@@ -56,7 +56,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			apiURL := khhttp.BuildBaseURL(host) + "/api/integrations"
 			if category != "" {
 				apiURL += "?category=" + category

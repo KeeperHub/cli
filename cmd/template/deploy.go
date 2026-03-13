@@ -47,7 +47,7 @@ func NewDeployCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			url := khhttp.BuildBaseURL(host) + "/api/workflows/" + templateID + "/duplicate"
 
 			var bodyData map[string]interface{}

@@ -43,13 +43,7 @@ func NewCancelCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			host, _ := cmd.Flags().GetString("host")
-			if host == "" {
-				host = cfg.DefaultHost
-			}
-			if host == "" {
-				host = "app.keeperhub.com"
-			}
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			// Confirmation: skip if --yes or non-TTY (auto-proceed in non-interactive mode).
 			yes, _ := cmd.Flags().GetBool("yes")

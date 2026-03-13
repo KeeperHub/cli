@@ -51,7 +51,7 @@ See also: kh r st, kh ex transfer, kh ex cc`,
 			if err != nil {
 				return err
 			}
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			watch, _ := cmd.Flags().GetBool("watch")
 

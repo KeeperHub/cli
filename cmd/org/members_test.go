@@ -29,7 +29,7 @@ func newMembersFactory(server *httptest.Server, ios *iostreams.IOStreams) *cmdut
 func makeMembersServer(t *testing.T, members []map[string]interface{}) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/api/auth/organization/list-members" {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/auth/organization/list-members" {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -39,7 +39,7 @@ func makeMembersServer(t *testing.T, members []map[string]interface{}) *httptest
 	}))
 }
 
-func TestMembersCmd_UsesPOSTMethod(t *testing.T) {
+func TestMembersCmd_UsesGETMethod(t *testing.T) {
 	method := ""
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/auth/organization/list-members" {
@@ -59,7 +59,7 @@ func TestMembersCmd_UsesPOSTMethod(t *testing.T) {
 	orgCmd.SetArgs([]string{"members"})
 	err := orgCmd.Execute()
 	require.NoError(t, err)
-	assert.Equal(t, http.MethodPost, method, "expected POST method for list-members endpoint")
+	assert.Equal(t, http.MethodGet, method, "expected GET method for list-members endpoint")
 }
 
 func TestMembersCmd_RendersTableWithColumns(t *testing.T) {

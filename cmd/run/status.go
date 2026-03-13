@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
@@ -73,13 +72,7 @@ See also: kh r l, kh r cancel, kh wf run`,
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			host, _ := cmd.Flags().GetString("host")
-			if host == "" {
-				host = cfg.DefaultHost
-			}
-			if host == "" {
-				host = "app.keeperhub.com"
-			}
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			watch, _ := cmd.Flags().GetBool("watch")
 			p := output.NewPrinter(f.IOStreams, cmd)
@@ -115,18 +108,20 @@ See also: kh r l, kh r cancel, kh wf run`,
 			}
 
 			printSummary := func(status *RunStatusResponse) error {
-				return p.PrintData(status, func(tw table.Writer) {
-					tw.AppendHeader(table.Row{"FIELD", "VALUE"})
-					tw.AppendRow(table.Row{"Status", status.Status})
-					tw.AppendRow(table.Row{"Steps", fmt.Sprintf("%d/%d", status.Progress.CompletedSteps, status.Progress.TotalSteps)})
-					currentStep := "-"
-					if status.Progress.CurrentNodeName != nil {
-						currentStep = *status.Progress.CurrentNodeName
-					}
-					tw.AppendRow(table.Row{"Current step", currentStep})
-					tw.AppendRow(table.Row{"Percentage", fmt.Sprintf("%d%%", status.Progress.Percentage)})
-					tw.Render()
+				if p.IsJSON() {
+					return p.PrintJSON(status)
+				}
+				currentStep := "-"
+				if status.Progress.CurrentNodeName != nil {
+					currentStep = *status.Progress.CurrentNodeName
+				}
+				p.PrintKeyValue([][2]string{
+					{"Status", status.Status},
+					{"Steps", fmt.Sprintf("%d/%d", status.Progress.CompletedSteps, status.Progress.TotalSteps)},
+					{"Current step", currentStep},
+					{"Percentage", fmt.Sprintf("%d%%", status.Progress.Percentage)},
 				})
+				return nil
 			}
 
 			if !watch {

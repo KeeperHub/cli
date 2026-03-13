@@ -19,10 +19,10 @@ func openKeyring() (keyring.Keyring, error) {
 		FileDir:         config.ConfigDir(),
 		FilePasswordFunc: keyring.FixedStringPrompt(""),
 		AllowedBackends: []keyring.BackendType{
+			keyring.FileBackend,
 			keyring.KeychainBackend,
 			keyring.WinCredBackend,
 			keyring.SecretServiceBackend,
-			keyring.FileBackend,
 		},
 	})
 }

@@ -37,7 +37,7 @@ func NewSwitchCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			baseURL := khhttp.BuildBaseURL(cfg.DefaultHost)
+			baseURL := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg))
 
 			// Step 1: Resolve slug to organization ID.
 			listReq, err := client.NewRequest(http.MethodGet, baseURL+"/api/organizations", nil)

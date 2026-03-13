@@ -50,7 +50,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/tags?limit=" + strconv.Itoa(limit)
+			url := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/tags?limit=" + strconv.Itoa(limit)
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)
 			if err != nil {

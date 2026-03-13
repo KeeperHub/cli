@@ -59,7 +59,7 @@ func NewTokensCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			apiURL := khhttp.BuildBaseURL(host) + "/api/user/wallet/tokens?limit=" + strconv.Itoa(limit)
 			if chain != "" {
 				apiURL += "&chain=" + chain

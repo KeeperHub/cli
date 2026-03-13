@@ -89,13 +89,7 @@ func NewLogsCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			host, _ := cmd.Flags().GetString("host")
-			if host == "" {
-				host = cfg.DefaultHost
-			}
-			if host == "" {
-				host = "app.keeperhub.com"
-			}
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			url := khhttp.BuildBaseURL(host) + "/api/workflows/executions/" + runID + "/logs"
 			req, err := httpClient.NewRequest(http.MethodGet, url, nil)
@@ -125,11 +119,11 @@ func NewLogsCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			p := output.NewPrinter(f.IOStreams, cmd)
+			if len(logsResp.Logs) == 0 && !p.IsJSON() {
+				fmt.Fprintln(f.IOStreams.Out, "No logs found.")
+				return nil
+			}
 			return p.PrintData(logsResp, func(tw table.Writer) {
-				if len(logsResp.Logs) == 0 {
-					fmt.Fprintf(f.IOStreams.Out, "No logs available for run %s\n", runID)
-					return
-				}
 				tw.AppendHeader(table.Row{"STEP", "STATUS", "DURATION", "INPUT", "OUTPUT"})
 				for _, log := range logsResp.Logs {
 					errSuffix := ""

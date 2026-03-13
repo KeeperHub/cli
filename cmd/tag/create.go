@@ -46,7 +46,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("building request body: %w", err)
 			}
 
-			url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/tags"
+			url := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/tags"
 			req, err := client.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
 			if err != nil {
 				return fmt.Errorf("building request: %w", err)
