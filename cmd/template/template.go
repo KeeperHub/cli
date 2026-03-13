@@ -12,6 +12,9 @@ func NewTemplateCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases: []string{"tp"},
 	}
 
+	cmd.PersistentFlags().Bool("json", false, "Output as JSON")
+	cmd.PersistentFlags().String("jq", "", "Filter JSON output with a jq expression")
+
 	cmd.AddCommand(NewListCmd(f))
 	cmd.AddCommand(NewDeployCmd(f))
 
