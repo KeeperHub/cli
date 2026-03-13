@@ -36,7 +36,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/tags"
+			url := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/tags"
 			req, err := client.NewRequest(http.MethodGet, url, nil)
 			if err != nil {
 				return fmt.Errorf("building request: %w", err)

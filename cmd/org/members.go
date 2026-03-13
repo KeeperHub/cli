@@ -1,7 +1,6 @@
 package org
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -32,8 +31,8 @@ func memberName(m Member) string {
 	return ""
 }
 
-// membersResponse wraps the Better Auth list-members response.
-type membersResponse struct {
+// listMembersResponse wraps the Better Auth list-members response.
+type listMembersResponse struct {
 	Members []Member `json:"members"`
 }
 
@@ -59,18 +58,12 @@ func NewMembersCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/auth/organization/list-members"
+			url := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/auth/organization/list-members"
 
-			bodyBytes, err := json.Marshal(map[string]string{})
-			if err != nil {
-				return fmt.Errorf("encoding request body: %w", err)
-			}
-
-			req, err := client.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+			req, err := client.NewRequest(http.MethodGet, url, nil)
 			if err != nil {
 				return fmt.Errorf("building request: %w", err)
 			}
-			req.Header.Set("Content-Type", "application/json")
 
 			resp, err := client.Do(req)
 			if err != nil {
@@ -82,9 +75,9 @@ func NewMembersCmd(f *cmdutil.Factory) *cobra.Command {
 				return khhttp.NewAPIError(resp)
 			}
 
-			var wrapper membersResponse
+			var wrapper listMembersResponse
 			if err := json.NewDecoder(resp.Body).Decode(&wrapper); err != nil {
-				return fmt.Errorf("unexpected response from member list endpoint: %w", err)
+				return fmt.Errorf("unexpected response from organization endpoint: %w", err)
 			}
 
 			members := wrapper.Members

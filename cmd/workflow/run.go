@@ -71,7 +71,7 @@ See also: kh r st, kh r l`,
 			if err != nil {
 				return err
 			}
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			execURL := khhttp.BuildBaseURL(host) + "/api/workflow/" + workflowID + "/execute"
 			req, err := client.NewRequest(http.MethodPost, execURL, bytes.NewBufferString("{}"))
@@ -86,7 +86,7 @@ See also: kh r st, kh r l`,
 			}
 			defer resp.Body.Close()
 
-			if resp.StatusCode != http.StatusAccepted {
+			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 				return khhttp.NewAPIError(resp)
 			}
 

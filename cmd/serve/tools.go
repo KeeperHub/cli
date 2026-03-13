@@ -94,7 +94,7 @@ func MakeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
 			return nil, fmt.Errorf("reading config: %w", err)
 		}
 
-		url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/execute/" + actionType
+		url := khhttp.BuildBaseURL(cmdutil.ResolveHost(nil, cfg)) + "/api/execute/" + actionType
 		httpReq, err := client.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
 		if err != nil {
 			return nil, fmt.Errorf("building request: %w", err)

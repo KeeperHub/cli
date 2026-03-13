@@ -116,7 +116,7 @@ func TestLogsCmd_EmptyLogs(t *testing.T) {
 	}
 
 	out := buf.String()
-	if !strings.Contains(out, "No logs available") {
+	if !strings.Contains(out, "No logs found.") {
 		t.Errorf("expected empty logs message, got: %q", out)
 	}
 }

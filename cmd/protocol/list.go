@@ -100,7 +100,7 @@ func loadProtocols(f *cmdutil.Factory, refresh bool, cmd *cobra.Command) ([]Prot
 	}
 
 	// Fetch fresh data
-	raw, fetchErr := fetchSchemas(f)
+	raw, fetchErr := fetchSchemas(f, cmd)
 	if fetchErr != nil {
 		if staleEntry != nil {
 			fmt.Fprintln(f.IOStreams.ErrOut, "Warning: using cached data (could not reach API)")
@@ -118,7 +118,7 @@ func loadProtocols(f *cmdutil.Factory, refresh bool, cmd *cobra.Command) ([]Prot
 }
 
 // fetchSchemas performs a GET /api/mcp/schemas request and returns the raw body.
-func fetchSchemas(f *cmdutil.Factory) (json.RawMessage, error) {
+func fetchSchemas(f *cmdutil.Factory, cmd *cobra.Command) (json.RawMessage, error) {
 	client, err := f.HTTPClient()
 	if err != nil {
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
@@ -129,7 +129,7 @@ func fetchSchemas(f *cmdutil.Factory) (json.RawMessage, error) {
 		return nil, fmt.Errorf("reading config: %w", err)
 	}
 
-	url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/mcp/schemas"
+	url := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/mcp/schemas"
 	req, err := client.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("building request: %w", err)

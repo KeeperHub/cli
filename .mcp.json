@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "keeperhub": {
+      "command": "kh",
+      "args": ["serve", "--mcp"]
+    }
+  }
+}

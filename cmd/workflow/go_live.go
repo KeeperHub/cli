@@ -56,7 +56,7 @@ func NewGoLiveCmd(f *cmdutil.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			body := goLiveRequest{
 				Name:         name,

@@ -65,7 +65,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			url := khhttp.BuildBaseURL(host) + "/api/workflows/public?featured=true"
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)
@@ -89,11 +89,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			p := output.NewPrinter(f.IOStreams, cmd)
+			if len(templates) == 0 && !p.IsJSON() {
+				fmt.Fprintln(f.IOStreams.Out, "No templates found.")
+				return nil
+			}
 			return p.PrintData(templates, func(tw table.Writer) {
-				if len(templates) == 0 {
-					fmt.Fprintln(f.IOStreams.Out, "No templates found.")
-					return
-				}
 				tw.AppendHeader(table.Row{"NAME", "DESCRIPTION", "CATEGORY"})
 				for _, tpl := range templates {
 					tw.AppendRow(table.Row{

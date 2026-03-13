@@ -36,7 +36,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			query := args[0]
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			apiURL := khhttp.BuildBaseURL(host) + "/api/integrations"
 
 			req, err := client.NewRequest(http.MethodGet, apiURL, nil)

@@ -37,7 +37,7 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			// Fetch tag name for display in the confirmation prompt.
-			listURL := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/tags"
+			listURL := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/tags"
 			listReq, err := client.NewRequest(http.MethodGet, listURL, nil)
 			if err != nil {
 				return fmt.Errorf("building list request: %w", err)
@@ -76,7 +76,7 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 				}
 			}
 
-			url := khhttp.BuildBaseURL(cfg.DefaultHost) + "/api/tags/" + tagID
+			url := khhttp.BuildBaseURL(cmdutil.ResolveHost(cmd, cfg)) + "/api/tags/" + tagID
 			req, err := client.NewRequest(http.MethodDelete, url, nil)
 			if err != nil {
 				return fmt.Errorf("building request: %w", err)

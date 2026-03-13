@@ -127,16 +127,14 @@ func getHTTPClient(_ *cmdutil.Factory) (*http.Client, error) {
 }
 
 // getHost returns the configured host, falling back to the default.
+// NOTE: cmd is not available in check functions, so we pass nil to ResolveHost.
+// The --host flag is still respected via the KH_HOST env var and config fallback.
 func getHost(f *cmdutil.Factory) (string, error) {
 	cfg, err := f.Config()
 	if err != nil {
 		return "", err
 	}
-	host := cfg.DefaultHost
-	if host == "" {
-		host = "app.keeperhub.com"
-	}
-	return host, nil
+	return cmdutil.ResolveHost(nil, cfg), nil
 }
 
 // doGet performs a GET request against url with the given context, returning

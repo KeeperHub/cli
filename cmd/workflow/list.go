@@ -58,7 +58,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			url := khhttp.BuildBaseURL(host) + "/api/workflows?limit=" + strconv.Itoa(limit)
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)
@@ -87,11 +87,22 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("decoding response: %w", err)
 			}
 
+			// Apply limit client-side (server does not support ?limit yet)
+			if limit > 0 && limit < len(workflows) {
+				workflows = workflows[:limit]
+			}
+
 			p := output.NewPrinter(f.IOStreams, cmd)
+			isTTY := f.IOStreams.IsTerminal()
+			if len(workflows) == 0 && !p.IsJSON() {
+				fmt.Fprintln(f.IOStreams.Out, "No workflows found.")
+				return nil
+			}
 			return p.PrintData(workflows, func(tw table.Writer) {
 				tw.AppendHeader(table.Row{"ID", "NAME", "STATUS", "VISIBILITY", "UPDATED"})
 				for _, wf := range workflows {
-					tw.AppendRow(table.Row{wf.ID, wf.Name, workflowStatus(wf.Enabled), wf.Visibility, wf.UpdatedAt})
+					status := output.ColorStatus(workflowStatus(wf.Enabled), isTTY, false)
+					tw.AppendRow(table.Row{wf.ID, wf.Name, status, wf.Visibility, output.TimeAgo(wf.UpdatedAt)})
 				}
 				tw.Render()
 			})

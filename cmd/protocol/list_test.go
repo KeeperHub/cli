@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -228,11 +227,8 @@ func TestListCmd_Table(t *testing.T) {
 	require.NoError(t, err)
 
 	out := outBuf.String()
-	// Check NAME and ACTIONS columns
-	outUpper := strings.ToUpper(out)
-	assert.True(t, strings.Contains(outUpper, "NAME"), "expected NAME column in output")
-	assert.True(t, strings.Contains(outUpper, "ACTIONS"), "expected ACTIONS column in output")
-	// Aave has 2 actions, Uniswap has 1
+	// Test streams are non-TTY, so tsvWriter outputs data rows without headers.
+	// Verify protocol names and action counts are present.
 	assert.Contains(t, out, "Aave")
 	assert.Contains(t, out, "2")
 	assert.Contains(t, out, "Uniswap")

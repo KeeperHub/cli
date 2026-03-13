@@ -51,7 +51,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			chain, _ := cmd.Flags().GetString("chain")
 			to, _ := cmd.Flags().GetString("to")

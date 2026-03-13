@@ -38,7 +38,7 @@ func NewUsageCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			url := khhttp.BuildBaseURL(host) + "/api/billing/subscription"
 			if period != "" && period != "current" {
 				url += "?period=" + period

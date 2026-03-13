@@ -47,7 +47,7 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			url := khhttp.BuildBaseURL(host) + "/api/billing/subscription"
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)

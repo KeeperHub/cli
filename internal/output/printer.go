@@ -83,6 +83,34 @@ func (p *Printer) PrintDryRun(message string) {
 	fmt.Fprintf(p.out, "[dry-run] %s\n", message)
 }
 
+// PrintKeyValue prints key-value pairs in a left-aligned format.
+// In TTY mode: keys are padded to the longest key width with a colon and tab.
+// In non-TTY mode: same tab-separated format.
+// Example:
+//
+//	ID:       abc123
+//	Name:     My Workflow
+//	Status:   active
+func (p *Printer) PrintKeyValue(pairs [][2]string) {
+	if len(pairs) == 0 {
+		return
+	}
+	maxKeyLen := 0
+	for _, pair := range pairs {
+		if len(pair[0]) > maxKeyLen {
+			maxKeyLen = len(pair[0])
+		}
+	}
+	for _, pair := range pairs {
+		// pad key with trailing spaces so values align
+		padded := pair[0] + ":"
+		for len(padded) < maxKeyLen+2 {
+			padded += " "
+		}
+		fmt.Fprintf(p.out, "%s\t%s\n", padded, pair[1])
+	}
+}
+
 // PrintError writes an error message to stderr.
 // In JSON mode it writes {"error": "...", "code": N}.
 // In table mode it writes plain text.

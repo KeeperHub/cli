@@ -52,7 +52,7 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 
 			chain, _ := cmd.Flags().GetString("chain")
 			contract, _ := cmd.Flags().GetString("contract")

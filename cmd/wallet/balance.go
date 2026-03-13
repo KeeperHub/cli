@@ -76,7 +76,7 @@ func NewBalanceCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
 			apiURL := khhttp.BuildBaseURL(host) + "/api/user/wallet/balances"
 
 			req, err := client.NewRequest(http.MethodGet, apiURL, nil)

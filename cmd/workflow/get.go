@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
@@ -38,18 +37,26 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
   # Get as JSON
   kh wf g abc123 --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := f.HTTPClient()
-			if err != nil {
-				return fmt.Errorf("creating HTTP client: %w", err)
-			}
-
 			cfg, err := f.Config()
 			if err != nil {
 				return fmt.Errorf("reading config: %w", err)
 			}
 
 			workflowID := args[0]
-			host := cfg.DefaultHost
+			host := cmdutil.ResolveHost(cmd, cfg)
+
+			webMode, _ := cmd.Flags().GetBool("web")
+			if webMode {
+				webURL := khhttp.BuildBaseURL(host) + "/workflows/" + workflowID
+				fmt.Fprintln(f.IOStreams.Out, webURL)
+				return cmdutil.OpenBrowser(webURL)
+			}
+
+			client, err := f.HTTPClient()
+			if err != nil {
+				return fmt.Errorf("creating HTTP client: %w", err)
+			}
+
 			url := khhttp.BuildBaseURL(host) + "/api/workflows/" + workflowID
 
 			req, err := client.NewRequest(http.MethodGet, url, nil)
@@ -79,19 +86,24 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			p := output.NewPrinter(f.IOStreams, cmd)
-			return p.PrintData(detail, func(tw table.Writer) {
-				tw.AppendRow(table.Row{"ID", detail.ID})
-				tw.AppendRow(table.Row{"Name", detail.Name})
-				tw.AppendRow(table.Row{"Status", workflowStatus(detail.Enabled)})
-				tw.AppendRow(table.Row{"Visibility", detail.Visibility})
-				tw.AppendRow(table.Row{"Created", detail.CreatedAt})
-				tw.AppendRow(table.Row{"Updated", detail.UpdatedAt})
-				tw.AppendRow(table.Row{"Nodes", len(detail.Nodes)})
-				tw.AppendRow(table.Row{"Edges", len(detail.Edges)})
-				tw.Render()
+			if p.IsJSON() {
+				return p.PrintJSON(detail)
+			}
+			p.PrintKeyValue([][2]string{
+				{"ID", detail.ID},
+				{"Name", detail.Name},
+				{"Status", workflowStatus(detail.Enabled)},
+				{"Visibility", detail.Visibility},
+				{"Created", output.TimeAgo(detail.CreatedAt)},
+				{"Updated", output.TimeAgo(detail.UpdatedAt)},
+				{"Nodes", fmt.Sprintf("%d", len(detail.Nodes))},
+				{"Edges", fmt.Sprintf("%d", len(detail.Edges))},
 			})
+			return nil
 		},
 	}
+
+	cmd.Flags().Bool("web", false, "Open the workflow in the browser")
 
 	return cmd
 }
