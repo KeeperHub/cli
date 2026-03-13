@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/keeperhub/cli/internal/config"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/iostreams"
 )
@@ -33,7 +36,16 @@ func DeviceLogin(host string, ios *iostreams.IOStreams) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
 
-	codeResp, err := requestDeviceCode(ctx, host)
+	// Load per-host headers (e.g. CF-Access) from hosts.yml.
+	var hostHeaders map[string]string
+	if hostsCfg, hostsErr := config.ReadHosts(); hostsErr == nil {
+		if entry, ok := hostsCfg.HostEntry(host); ok {
+			hostHeaders = entry.Headers
+		}
+	}
+
+	baseURL := khhttp.BuildBaseURL(host)
+	codeResp, err := requestDeviceCode(ctx, baseURL, hostHeaders)
 	if err != nil {
 		return "", err
 	}
@@ -46,7 +58,7 @@ func DeviceLogin(host string, ios *iostreams.IOStreams) (string, error) {
 		interval = 5 * time.Second
 	}
 
-	token, err := pollDeviceToken(ctx, host, codeResp.DeviceCode, interval)
+	token, err := pollDeviceToken(ctx, baseURL, codeResp.DeviceCode, interval, hostHeaders)
 	if err != nil {
 		return "", err
 	}
@@ -58,18 +70,22 @@ func DeviceLogin(host string, ios *iostreams.IOStreams) (string, error) {
 	return token, nil
 }
 
-func requestDeviceCode(ctx context.Context, host string) (deviceCodeResponse, error) {
+func requestDeviceCode(ctx context.Context, baseURL string, headers map[string]string) (deviceCodeResponse, error) {
 	body, err := json.Marshal(map[string]string{"client_id": "kh-cli"})
 	if err != nil {
 		return deviceCodeResponse{}, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		khhttp.BuildBaseURL(host)+"/api/auth/device/code", bytes.NewReader(body))
+		baseURL+"/api/auth/device/code", bytes.NewReader(body))
 	if err != nil {
 		return deviceCodeResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", baseURL)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -89,7 +105,7 @@ func requestDeviceCode(ctx context.Context, host string) (deviceCodeResponse, er
 	return codeResp, nil
 }
 
-func pollDeviceToken(ctx context.Context, host, deviceCode string, interval time.Duration) (string, error) {
+func pollDeviceToken(ctx context.Context, baseURL, deviceCode string, interval time.Duration, headers map[string]string) (string, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -97,7 +113,7 @@ func pollDeviceToken(ctx context.Context, host, deviceCode string, interval time
 		case <-time.After(interval):
 		}
 
-		tokenResp, err := checkDeviceToken(ctx, host, deviceCode)
+		tokenResp, err := checkDeviceToken(ctx, baseURL, deviceCode, headers)
 		if err != nil {
 			return "", err
 		}
@@ -121,7 +137,7 @@ func pollDeviceToken(ctx context.Context, host, deviceCode string, interval time
 	}
 }
 
-func checkDeviceToken(ctx context.Context, host, deviceCode string) (deviceTokenResponse, error) {
+func checkDeviceToken(ctx context.Context, baseURL, deviceCode string, headers map[string]string) (deviceTokenResponse, error) {
 	body, err := json.Marshal(map[string]string{
 		"grant_type":  "urn:ietf:params:oauth:grant-type:device_code",
 		"device_code": deviceCode,
@@ -132,11 +148,15 @@ func checkDeviceToken(ctx context.Context, host, deviceCode string) (deviceToken
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		khhttp.BuildBaseURL(host)+"/api/auth/device/token", bytes.NewReader(body))
+		baseURL+"/api/auth/device/token", bytes.NewReader(body))
 	if err != nil {
 		return deviceTokenResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", baseURL)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -150,4 +170,17 @@ func checkDeviceToken(ctx context.Context, host, deviceCode string) (deviceToken
 	}
 
 	return tokenResp, nil
+}
+
+// ReadTokenFromStdin reads a token from ios.In, trims whitespace, and returns it.
+func ReadTokenFromStdin(ios *iostreams.IOStreams) (string, error) {
+	data, err := io.ReadAll(ios.In)
+	if err != nil {
+		return "", fmt.Errorf("reading token from stdin: %w", err)
+	}
+	token := strings.TrimSpace(string(data))
+	if token == "" {
+		return "", errors.New("no token provided on stdin")
+	}
+	return token, nil
 }

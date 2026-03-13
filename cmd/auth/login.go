@@ -12,12 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// BrowserLoginFunc is the function used to perform browser-based login.
-// Tests may override this to avoid opening a real browser.
-var BrowserLoginFunc = func(host string, ios *iostreams.IOStreams) (string, error) {
-	return internalauth.BrowserLogin(host, ios)
-}
-
 // DeviceLoginFunc is the function used to perform device-code login.
 // Tests may override this to avoid real network calls.
 var DeviceLoginFunc = func(host string, ios *iostreams.IOStreams) (string, error) {
@@ -41,16 +35,16 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "login",
 		Short: "Log in to KeeperHub",
 		Args:  cobra.NoArgs,
-		Long: `Authenticate with KeeperHub. By default opens a browser for OAuth.
-Use --no-browser for device code flow on headless or SSH environments.
+		Long: `Authenticate with KeeperHub using the device code flow.
+Opens a browser to confirm a one-time code.
 Use --with-token to read an API key from stdin for non-interactive automation.
 
 See also: kh auth status, kh auth logout`,
-		Example: `  # Log in via browser
+		Example: `  # Log in (device code flow)
   kh auth login
 
-  # Log in on a headless machine
-  kh auth login --no-browser`,
+  # Log in with an API key (non-interactive)
+  echo "kh_xxx" | kh auth login --with-token`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hosts, err := config.ReadHosts()
 			if err != nil {
@@ -66,13 +60,11 @@ See also: kh auth status, kh auth logout`,
 			envHost := os.Getenv("KH_HOST")
 			host := hosts.ActiveHost(flagHost, envHost)
 
-			noBrowser, _ := cmd.Flags().GetBool("no-browser")
 			withToken, _ := cmd.Flags().GetBool("with-token")
 
 			var token string
 
-			switch {
-			case withToken:
+			if withToken {
 				t, readErr := internalauth.ReadTokenFromStdin(f.IOStreams)
 				if readErr != nil {
 					return readErr
@@ -81,16 +73,8 @@ See also: kh auth status, kh auth logout`,
 					return fmt.Errorf("storing token: %w", err)
 				}
 				token = t
-
-			case noBrowser:
+			} else {
 				t, loginErr := DeviceLoginFunc(host, f.IOStreams)
-				if loginErr != nil {
-					return loginErr
-				}
-				token = t
-
-			default:
-				t, loginErr := BrowserLoginFunc(host, f.IOStreams)
 				if loginErr != nil {
 					return loginErr
 				}
@@ -103,7 +87,6 @@ See also: kh auth status, kh auth logout`,
 
 			info, err := FetchTokenInfoFunc(host, token)
 			if err != nil {
-				// Non-fatal: login succeeded but we can't fetch user details
 				fmt.Fprintf(f.IOStreams.Out, "Logged in to %s\n", host)
 				return nil
 			}
@@ -113,7 +96,6 @@ See also: kh auth status, kh auth logout`,
 		},
 	}
 
-	cmd.Flags().Bool("no-browser", false, "Do not open a browser window")
 	cmd.Flags().Bool("with-token", false, "Read token from stdin")
 
 	return cmd
