@@ -1,4 +1,4 @@
-# kh -- KeeperHub CLI
+# kh - KeeperHub CLI
 
 Command-line interface for KeeperHub, the Web3 automation platform.
 
