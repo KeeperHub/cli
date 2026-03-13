@@ -57,7 +57,7 @@ func runServeMCP(f *cmdutil.Factory) error {
 		Version: f.AppVersion,
 	}, nil)
 
-	if err := registerTools(server, f); err != nil {
+	if err := RegisterTools(server, f); err != nil {
 		fmt.Fprintf(f.IOStreams.ErrOut, "Warning: tool registration failed: %v\n", err)
 	}
 

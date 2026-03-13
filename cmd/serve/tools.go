@@ -14,10 +14,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// buildInputSchema converts an ActionSchema's field definitions into a
+// BuildInputSchema converts an ActionSchema's field definitions into a
 // JSON Schema object (as map[string]any) suitable for mcp.Tool.InputSchema.
 // All fields are typed as "string" with a description from the map value.
-func buildInputSchema(action ActionSchema) map[string]any {
+func BuildInputSchema(action ActionSchema) map[string]any {
 	properties := make(map[string]any)
 	required := make([]string, 0)
 
@@ -43,11 +43,11 @@ func buildInputSchema(action ActionSchema) map[string]any {
 	}
 }
 
-// registerTools fetches the /api/mcp/schemas endpoint and registers one MCP
+// RegisterTools fetches the /api/mcp/schemas endpoint and registers one MCP
 // tool per action. Tool names use underscore separators (e.g. "web3_transfer").
 // If the schemas fetch fails, a warning is logged to stderr and the server
 // starts with zero tools -- this is intentional per design.
-func registerTools(server *mcp.Server, f *cmdutil.Factory) error {
+func RegisterTools(server *mcp.Server, f *cmdutil.Factory) error {
 	schemas, err := fetchMCPSchemas(f)
 	if err != nil {
 		fmt.Fprintf(f.IOStreams.ErrOut, "Warning: could not fetch MCP schemas: %v\n", err)
@@ -60,17 +60,17 @@ func registerTools(server *mcp.Server, f *cmdutil.Factory) error {
 		tool := &mcp.Tool{
 			Name:        toolName,
 			Description: action.Description,
-			InputSchema: buildInputSchema(action),
+			InputSchema: BuildInputSchema(action),
 		}
-		server.AddTool(tool, makeToolHandler(f, at))
+		server.AddTool(tool, MakeToolHandler(f, at))
 	}
 
 	return nil
 }
 
-// makeToolHandler returns a ToolHandler that POSTs to /api/execute/{actionType}
+// MakeToolHandler returns a ToolHandler that POSTs to /api/execute/{actionType}
 // with the tool call arguments as the JSON body.
-func makeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
+func MakeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
 	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		var args map[string]any
 		if req.Params.Arguments != nil {
