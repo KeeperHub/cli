@@ -8,6 +8,7 @@ import (
 	"github.com/keeperhub/cli/cmd/config"
 	"github.com/keeperhub/cli/cmd/doctor"
 	"github.com/keeperhub/cli/cmd/execute"
+	"github.com/keeperhub/cli/cmd/help"
 	"github.com/keeperhub/cli/cmd/org"
 	"github.com/keeperhub/cli/cmd/project"
 	"github.com/keeperhub/cli/cmd/protocol"
@@ -55,6 +56,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(version.NewVersionCmd(f))
 	cmd.AddCommand(wallet.NewWalletCmd(f))
 	cmd.AddCommand(workflow.NewWorkflowCmd(f))
+	cmd.AddCommand(help.NewEnvironmentTopic())
+	cmd.AddCommand(help.NewExitCodesTopic())
+	cmd.AddCommand(help.NewFormattingTopic())
 
 	return cmd
 }

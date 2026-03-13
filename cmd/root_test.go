@@ -112,11 +112,11 @@ func TestRootCmdParsesHostFlag(t *testing.T) {
 	assert.Equal(t, "app-staging.keeperhub.com", hostVal)
 }
 
-func TestRootCmdHas17Subcommands(t *testing.T) {
+func TestRootCmdHas20Subcommands(t *testing.T) {
 	f := newTestFactory()
 	root := cmd.NewRootCmd(f)
 	cmds := root.Commands()
-	assert.Equal(t, 17, len(cmds), "expected 17 subcommands registered on root")
+	assert.Equal(t, 20, len(cmds), "expected 20 subcommands registered on root (17 commands + 3 help topics)")
 }
 
 func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
