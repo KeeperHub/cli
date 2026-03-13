@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -91,7 +92,7 @@ func NewLogsCmd(f *cmdutil.Factory) *cobra.Command {
 				host = "app.keeperhub.io"
 			}
 
-			url := buildBaseURL(host) + "/api/workflows/executions/" + runID + "/logs"
+			url := khhttp.BuildBaseURL(host) + "/api/workflows/executions/" + runID + "/logs"
 			req, err := httpClient.NewRequest(http.MethodGet, url, nil)
 			if err != nil {
 				return fmt.Errorf("creating request: %w", err)

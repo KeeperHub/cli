@@ -5,24 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
-
-// buildBaseURL normalises a host string into a base URL.
-// If host already starts with http:// or https://, it is returned as-is.
-// Otherwise https:// is prepended.
-func buildBaseURL(host string) string {
-	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
-		return strings.TrimRight(host, "/")
-	}
-	return "https://" + strings.TrimRight(host, "/")
-}
 
 // RunStatusResponse is the response from GET /api/workflows/executions/{id}/status.
 type RunStatusResponse struct {
@@ -85,7 +75,7 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 			p := output.NewPrinter(f.IOStreams, cmd)
 
 			fetchStatus := func() (*RunStatusResponse, error) {
-				url := buildBaseURL(host) + "/api/workflows/executions/" + runID + "/status"
+				url := khhttp.BuildBaseURL(host) + "/api/workflows/executions/" + runID + "/status"
 				req, reqErr := httpClient.NewRequest(http.MethodGet, url, nil)
 				if reqErr != nil {
 					return nil, fmt.Errorf("creating request: %w", reqErr)

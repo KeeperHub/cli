@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -58,7 +59,7 @@ func NewCancelCmd(f *cmdutil.Factory) *cobra.Command {
 				}
 			}
 
-			url := buildBaseURL(host) + "/api/executions/" + runID + "/cancel"
+			url := khhttp.BuildBaseURL(host) + "/api/executions/" + runID + "/cancel"
 			req, err := httpClient.NewRequest(http.MethodPost, url, nil)
 			if err != nil {
 				return fmt.Errorf("creating request: %w", err)
