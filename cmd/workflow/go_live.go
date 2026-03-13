@@ -24,6 +24,11 @@ func NewGoLiveCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Publish a workflow",
 		Aliases: []string{"live"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Publish a workflow as a template
+  kh wf go-live abc123 --name "My DeFi Template"
+
+  # Publish with public tags
+  kh wf go-live abc123 --name "Uniswap Swap" --tags tag1,tag2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workflowID := args[0]
 

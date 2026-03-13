@@ -38,6 +38,11 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "contract-call",
 		Short:   "Call a smart contract method",
 		Aliases: []string{"cc"},
+		Example: `  # Call a read-only method (returns result immediately)
+  kh ex cc --chain 1 --contract 0x... --method balanceOf --args '["0x..."]'
+
+  # Call a write method and wait for the transaction
+  kh ex cc --chain 1 --contract 0x... --method transfer --args '["0x...","1000"]' --wait`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

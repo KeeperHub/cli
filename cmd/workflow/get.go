@@ -32,6 +32,11 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Get a workflow",
 		Aliases: []string{"g"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Get workflow details
+  kh wf g abc123
+
+  # Get as JSON
+  kh wf g abc123 --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

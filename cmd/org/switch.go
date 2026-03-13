@@ -19,6 +19,11 @@ func NewSwitchCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Switch to an organization",
 		Aliases: []string{"sw"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Switch to an organization by slug
+  kh o sw my-org
+
+  # Find org slugs first
+  kh o ls`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			slug := args[0]
 

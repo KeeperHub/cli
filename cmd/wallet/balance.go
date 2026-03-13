@@ -55,6 +55,11 @@ func NewBalanceCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Show wallet balance",
 		Aliases: []string{"bal"},
 		Args:    cobra.NoArgs,
+		Example: `  # Show balances for all chains
+  kh w balance
+
+  # Filter to a specific chain
+  kh w balance --chain Ethereum`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

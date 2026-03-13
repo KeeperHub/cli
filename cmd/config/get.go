@@ -12,6 +12,8 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "get <key>",
 		Short: "Get a configuration value",
 		Args:  cobra.ExactArgs(1),
+		Example: `  # Get the default host
+  kh config get default_host`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 

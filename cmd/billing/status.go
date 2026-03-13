@@ -31,6 +31,11 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Show billing status",
 		Aliases: []string{"st"},
 		Args:    cobra.NoArgs,
+		Example: `  # Show billing plan and usage
+  kh b st
+
+  # Show as JSON
+  kh b st --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

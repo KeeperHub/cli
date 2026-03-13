@@ -41,6 +41,16 @@ func NewRunCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Run a workflow",
 		Aliases: []string{"r"},
 		Args:    cobra.ExactArgs(1),
+		Long: `Run triggers a workflow execution. By default the command returns the
+execution ID immediately. Use --wait to block until the run completes
+or times out (default timeout: 5 minutes).
+
+See also: kh r st, kh r l`,
+		Example: `  # Run a workflow
+  kh wf run abc123
+
+  # Run and wait for completion
+  kh wf run abc123 --wait --timeout 2m`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workflowID := args[0]
 

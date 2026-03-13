@@ -10,6 +10,11 @@ func NewProjectCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "project",
 		Short:   "Manage projects",
 		Aliases: []string{"p"},
+		Example: `  # List all projects
+  kh p ls
+
+  # Create a new project
+  kh p create "My Project"`,
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")

@@ -14,6 +14,8 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List all configuration values",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Example: `  # List all config values
+  kh config ls`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := f.Config()
 			if err != nil {

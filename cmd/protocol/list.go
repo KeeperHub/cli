@@ -48,6 +48,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List blockchain protocols",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Example: `  # List all protocols (cached)
+  kh pr ls
+
+  # Force refresh from API
+  kh pr ls --refresh`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			refresh, err := cmd.Flags().GetBool("refresh")
 			if err != nil {

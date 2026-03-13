@@ -19,6 +19,11 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Create a project",
 		Aliases: []string{"c"},
 		Args:    cobra.MinimumNArgs(1),
+		Example: `  # Create a project
+  kh p create "My Project"
+
+  # Create with a description
+  kh p create "DeFi Automations" --description "Uniswap and Aave workflows"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			description, _ := cmd.Flags().GetString("description")

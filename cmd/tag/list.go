@@ -29,6 +29,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List tags",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Example: `  # List all tags
+  kh t ls
+
+  # List with a higher limit
+  kh t ls --limit 50`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

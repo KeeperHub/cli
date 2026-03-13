@@ -15,6 +15,8 @@ func NewVersionCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Show CLI version",
 		Aliases: []string{"v"},
 		Args:    cobra.NoArgs,
+		Example: `  # Show version and runtime info
+  kh version`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(f.IOStreams.Out, "kh version %s\n", version.Version)
 			fmt.Fprintf(f.IOStreams.Out, "%s/%s (%s)\n", runtime.GOOS, runtime.GOARCH, runtime.Version())

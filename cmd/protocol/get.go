@@ -16,6 +16,11 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Get a protocol",
 		Aliases: []string{"g"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Get protocol reference card
+  kh pr g uniswap
+
+  # Get protocol details as JSON
+  kh pr g aave --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			slug := args[0]
 

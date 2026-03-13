@@ -37,6 +37,11 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "transfer",
 		Short:   "Transfer tokens",
 		Aliases: []string{"t"},
+		Example: `  # Transfer ETH and wait for completion
+  kh ex t --chain 1 --to 0xABCD... --amount 0.01 --wait
+
+  # Transfer an ERC-20 token
+  kh ex t --chain 1 --to 0xABCD... --amount 100 --token-address 0xUSDC...`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

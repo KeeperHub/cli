@@ -49,6 +49,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List workflow templates",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Example: `  # List featured templates
+  kh tp ls
+
+  # List templates as JSON
+  kh tp ls --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

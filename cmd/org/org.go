@@ -10,6 +10,11 @@ func NewOrgCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "org",
 		Short:   "Manage organizations",
 		Aliases: []string{"o"},
+		Example: `  # List organizations you belong to
+  kh o ls
+
+  # Switch to a different organization
+  kh o sw my-org-slug`,
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")

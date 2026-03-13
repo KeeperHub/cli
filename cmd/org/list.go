@@ -28,6 +28,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List organizations",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Example: `  # List all organizations
+  kh o ls
+
+  # List as JSON
+  kh o ls --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

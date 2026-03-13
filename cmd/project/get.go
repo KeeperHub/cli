@@ -18,6 +18,11 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Get a project",
 		Aliases: []string{"g"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Get project details
+  kh p g abc123
+
+  # Get as JSON
+  kh p g abc123 --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID := args[0]
 

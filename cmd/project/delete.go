@@ -18,6 +18,11 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Delete a project",
 		Aliases: []string{"d", "rm"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Delete a project (will prompt for confirmation)
+  kh p delete abc123
+
+  # Delete without prompting
+  kh p delete abc123 --yes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID := args[0]
 

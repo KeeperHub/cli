@@ -27,6 +27,15 @@ func NewLogoutCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "logout",
 		Short: "Log out of KeeperHub",
 		Args:  cobra.NoArgs,
+		Long: `Remove stored credentials for the current host. The token is deleted from
+the system keyring and cleared from the hosts config file.
+
+See also: kh auth login, kh auth status`,
+		Example: `  # Log out of the default host
+  kh auth logout
+
+  # Log out of a specific host
+  kh auth logout --host staging.keeperhub.io`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hosts, err := config.ReadHosts()
 			if err != nil {

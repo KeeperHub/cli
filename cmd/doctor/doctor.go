@@ -40,6 +40,16 @@ func NewDoctorCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Check CLI health",
 		Aliases: []string{"doc"},
 		Args:    cobra.NoArgs,
+		Long: `Run diagnostic checks against your KeeperHub configuration and API
+connectivity. Checks auth validity, API reachability, wallet status,
+spend cap, chain availability, and CLI version.
+
+See also: kh auth status, kh version`,
+		Example: `  # Run all health checks
+  kh doctor
+
+  # Output results as JSON
+  kh doctor --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDoctor(cmd, f)
 		},

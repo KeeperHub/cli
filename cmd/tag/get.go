@@ -18,6 +18,11 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Get a tag",
 		Aliases: []string{"g"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Get tag details
+  kh t g abc123
+
+  # Get as JSON
+  kh t g abc123 --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tagID := args[0]
 

@@ -41,6 +41,16 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "login",
 		Short: "Log in to KeeperHub",
 		Args:  cobra.NoArgs,
+		Long: `Authenticate with KeeperHub. By default opens a browser for OAuth.
+Use --no-browser for device code flow on headless or SSH environments.
+Use --with-token to read an API key from stdin for non-interactive automation.
+
+See also: kh auth status, kh auth logout`,
+		Example: `  # Log in via browser
+  kh auth login
+
+  # Log in on a headless machine
+  kh auth login --no-browser`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hosts, err := config.ReadHosts()
 			if err != nil {

@@ -71,6 +71,11 @@ func NewLogsCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Show logs for a run",
 		Aliases: []string{"l"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Show step logs for a run
+  kh r l abc123
+
+  # Show logs as JSON
+  kh r l abc123 --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID := args[0]
 

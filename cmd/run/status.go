@@ -50,6 +50,16 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Show the status of a run",
 		Aliases: []string{"st"},
 		Args:    cobra.ExactArgs(1),
+		Long: `Show the current status of a workflow run. Use --watch to poll
+until the run reaches a terminal state (success, error, or cancelled).
+Watch mode has no timeout and runs until Ctrl+C.
+
+See also: kh r l, kh r cancel, kh wf run`,
+		Example: `  # Show run status
+  kh r st abc123
+
+  # Watch until run completes
+  kh r st abc123 --watch`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID := args[0]
 

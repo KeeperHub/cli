@@ -33,6 +33,11 @@ func NewTokensCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List wallet tokens",
 		Aliases: []string{"tok"},
 		Args:    cobra.NoArgs,
+		Example: `  # List supported tokens
+  kh w tokens
+
+  # Filter to a specific chain
+  kh w tokens --chain 1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

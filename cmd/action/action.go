@@ -10,6 +10,11 @@ func NewActionCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "action",
 		Short:   "Browse available actions",
 		Aliases: []string{"a"},
+		Example: `  # List available actions
+  kh a ls
+
+  # Get details for a specific action
+  kh a g ethereum-transfer`,
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")

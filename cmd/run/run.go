@@ -10,6 +10,11 @@ func NewRunCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "run",
 		Short:   "Monitor workflow runs",
 		Aliases: []string{"r"},
+		Example: `  # Show status of a run
+  kh r st abc123
+
+  # Show step-by-step logs
+  kh r l abc123`,
 	}
 
 	cmd.AddCommand(NewStatusCmd(f))

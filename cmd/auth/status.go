@@ -35,6 +35,11 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "status",
 		Short: "Show authentication status",
 		Args:  cobra.NoArgs,
+		Example: `  # Show current auth status
+  kh auth status
+
+  # Show status as JSON
+  kh auth status --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hosts, err := config.ReadHosts()
 			if err != nil {

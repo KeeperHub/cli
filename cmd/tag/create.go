@@ -19,6 +19,11 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Create a tag",
 		Aliases: []string{"c"},
 		Args:    cobra.MinimumNArgs(1),
+		Example: `  # Create a tag with default color
+  kh t create "defi"
+
+  # Create a tag with a custom color
+  kh t create "urgent" --color "#ef4444"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			color, _ := cmd.Flags().GetString("color")

@@ -25,6 +25,11 @@ func NewCancelCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "cancel <run-id>",
 		Short: "Cancel a run",
 		Args:  cobra.ExactArgs(1),
+		Example: `  # Cancel a run (will prompt for confirmation)
+  kh r cancel abc123
+
+  # Cancel without prompting
+  kh r cancel abc123 --yes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID := args[0]
 

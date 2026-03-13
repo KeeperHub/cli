@@ -19,6 +19,11 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Get an action",
 		Aliases: []string{"g"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Get action by name
+  kh a g ethereum-transfer
+
+  # Get action details as JSON
+  kh a g uniswap-swap --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

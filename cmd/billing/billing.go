@@ -10,6 +10,11 @@ func NewBillingCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "billing",
 		Short:   "View billing and usage",
 		Aliases: []string{"b"},
+		Example: `  # Show billing status
+  kh b st
+
+  # Show usage for current period
+  kh b u`,
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")

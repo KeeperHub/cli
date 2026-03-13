@@ -24,6 +24,11 @@ func NewDeployCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Deploy a workflow template",
 		Aliases: []string{"d"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Deploy a template using its ID
+  kh tp deploy abc123
+
+  # Deploy and give it a custom name
+  kh tp deploy abc123 --name "My Uniswap Workflow"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			templateID := args[0]
 

@@ -15,6 +15,16 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "set <key> <value>",
 		Short: "Set a configuration value",
 		Args:  cobra.ExactArgs(2),
+		Long: `Persist a configuration key-value pair to the config file. Changes take
+effect immediately on the next command run. Use 'kh config list' to see
+all valid keys.
+
+See also: kh config list, kh config get`,
+		Example: `  # Set the default host
+  kh config set default_host app.keeperhub.io
+
+  # Point CLI at a self-hosted instance
+  kh config set default_host https://kh.mycompany.io`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			value := args[1]

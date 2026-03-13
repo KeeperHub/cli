@@ -18,6 +18,11 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Delete a tag",
 		Aliases: []string{"d", "rm"},
 		Args:    cobra.ExactArgs(1),
+		Example: `  # Delete a tag (will prompt for confirmation)
+  kh t delete abc123
+
+  # Delete without prompting
+  kh t delete abc123 --yes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tagID := args[0]
 

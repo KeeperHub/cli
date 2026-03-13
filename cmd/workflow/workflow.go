@@ -10,6 +10,11 @@ func NewWorkflowCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "workflow",
 		Short:   "Manage workflows",
 		Aliases: []string{"wf"},
+		Example: `  # List workflows
+  kh wf ls
+
+  # Run a workflow
+  kh wf run abc123`,
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")

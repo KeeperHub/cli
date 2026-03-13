@@ -31,6 +31,15 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Show the status of an execution",
 		Aliases: []string{"st"},
 		Args:    cobra.ExactArgs(1),
+		Long: `Show the status of a direct blockchain execution (transfer or contract call).
+Use --watch to poll until the execution reaches a terminal state.
+
+See also: kh r st, kh ex transfer, kh ex cc`,
+		Example: `  # Show execution status
+  kh ex st abc123
+
+  # Watch until completion
+  kh ex st abc123 --watch`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			executionID := args[0]
 

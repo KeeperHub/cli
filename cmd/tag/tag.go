@@ -10,6 +10,11 @@ func NewTagCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:     "tag",
 		Short:   "Manage tags",
 		Aliases: []string{"t"},
+		Example: `  # List all tags
+  kh t ls
+
+  # Create a new tag
+  kh t create "my-tag"`,
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")

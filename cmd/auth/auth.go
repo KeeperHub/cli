@@ -9,6 +9,11 @@ func NewAuthCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
 		Short: "Authenticate with KeeperHub",
+		Example: `  # Log in via browser
+  kh auth login
+
+  # Check current auth status
+  kh auth status`,
 	}
 
 	cmd.AddCommand(NewLoginCmd(f))

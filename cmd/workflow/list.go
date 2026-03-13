@@ -37,6 +37,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List workflows",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Example: `  # List workflows
+  kh wf ls
+
+  # List with a higher limit
+  kh wf ls --limit 5`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

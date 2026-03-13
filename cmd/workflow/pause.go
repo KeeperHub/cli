@@ -20,6 +20,11 @@ func NewPauseCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "pause <workflow-id>",
 		Short: "Pause a workflow",
 		Args:  cobra.ExactArgs(1),
+		Example: `  # Pause a workflow (will prompt for confirmation)
+  kh wf pause abc123
+
+  # Pause without prompting
+  kh wf pause abc123 --yes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workflowID := args[0]
 

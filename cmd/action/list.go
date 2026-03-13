@@ -35,6 +35,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List available actions",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Example: `  # List all actions
+  kh a ls
+
+  # Filter by category
+  kh a ls --category web3`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {

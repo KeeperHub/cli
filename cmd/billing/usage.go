@@ -17,6 +17,11 @@ func NewUsageCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Show billing usage",
 		Aliases: []string{"u"},
 		Args:    cobra.NoArgs,
+		Example: `  # Show current period usage
+  kh b u
+
+  # Show usage for a specific period
+  kh b u --period 2026-03`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			period, err := cmd.Flags().GetString("period")
 			if err != nil {

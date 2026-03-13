@@ -43,6 +43,11 @@ func NewMembersCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List organization members",
 		Aliases: []string{"m"},
 		Args:    cobra.NoArgs,
+		Example: `  # List members in the current organization
+  kh o m
+
+  # List as JSON
+  kh o m --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {
