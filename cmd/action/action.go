@@ -12,6 +12,9 @@ func NewActionCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases: []string{"a"},
 	}
 
+	cmd.PersistentFlags().Bool("json", false, "Output as JSON")
+	cmd.PersistentFlags().String("jq", "", "Filter JSON output with a jq expression")
+
 	cmd.AddCommand(NewListCmd(f))
 	cmd.AddCommand(NewGetCmd(f))
 
