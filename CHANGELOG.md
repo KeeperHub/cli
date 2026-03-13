@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/KeeperHub/cli/compare/v0.2.3...v0.3.0) (2026-03-13)
+
+
+### Features
+
+* browser-based OAuth via server-side relay with nonce ([8bbb5fb](https://github.com/KeeperHub/cli/commit/8bbb5fb4a304f9f0ebfd4091b0683b3701306188))
+* browser-based OAuth via server-side relay with nonce ([5635884](https://github.com/KeeperHub/cli/commit/5635884c62350c0cae73724767b099aebb549ad5))
+* make device flow the default auth method ([eb0b8ff](https://github.com/KeeperHub/cli/commit/eb0b8ffa40a79c45042f468f041c9a163f9be0b8))
+
+
+### Bug Fixes
+
+* add Origin header to device flow requests for Better Auth CSRF ([9ff8747](https://github.com/KeeperHub/cli/commit/9ff8747eea2992dee541ddd618989cb9c9f4a429))
+
 ## [0.2.3](https://github.com/KeeperHub/cli/compare/v0.2.2...v0.2.3) (2026-03-13)
 
 
