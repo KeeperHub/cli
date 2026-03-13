@@ -29,6 +29,7 @@ KeeperHub CLI
 * [kh serve](kh_serve.md)	 - Start a server
 * [kh tag](kh_tag.md)	 - Manage tags
 * [kh template](kh_template.md)	 - Manage workflow templates
+* [kh update](kh_update.md)	 - Update kh to the latest version
 * [kh version](kh_version.md)	 - Show CLI version
 * [kh wallet](kh_wallet.md)	 - Manage wallets
 * [kh workflow](kh_workflow.md)	 - Manage workflows
