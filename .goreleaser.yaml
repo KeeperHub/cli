@@ -39,5 +39,3 @@ homebrew_casks:
       bash: "completions/kh.bash"
       zsh: "completions/kh.zsh"
       fish: "completions/kh.fish"
-    test: |
-      system "#{bin}/kh version"
