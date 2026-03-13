@@ -28,7 +28,8 @@ archives:
 checksum:
   name_template: checksums.txt
 homebrew_casks:
-  - repository:
+  - name: kh
+    repository:
       owner: keeperhub
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
