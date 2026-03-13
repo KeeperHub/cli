@@ -148,6 +148,65 @@ func TestHostsYAMLCFAccessHeaders(t *testing.T) {
 	}
 }
 
+// TestActiveHostConfigYMLFallback verifies that when hosts.yml has no default_host,
+// ActiveHost falls back to the default_host in config.yml.
+func TestActiveHostConfigYMLFallback(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	// Write config.yml with a custom default_host
+	cfg := config.Config{ConfigVersion: "1", DefaultHost: "staging.example.com"}
+	if err := config.WriteConfig(cfg); err != nil {
+		t.Fatalf("WriteConfig: %v", err)
+	}
+
+	// hosts.yml has no default_host (empty HostsConfig)
+	h := config.HostsConfig{}
+	got := h.ActiveHost("", "")
+	if got != "staging.example.com" {
+		t.Errorf("ActiveHost config.yml fallback: got %q, want %q", got, "staging.example.com")
+	}
+}
+
+// TestActiveHostHostsYMLOverridesConfigYML verifies that hosts.yml default_host
+// takes priority over config.yml default_host.
+func TestActiveHostHostsYMLOverridesConfigYML(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	// Write config.yml with a custom default_host
+	cfg := config.Config{ConfigVersion: "1", DefaultHost: "config.example.com"}
+	if err := config.WriteConfig(cfg); err != nil {
+		t.Fatalf("WriteConfig: %v", err)
+	}
+
+	// hosts.yml has its own default_host -- it should win
+	h := config.HostsConfig{DefaultHost: "hosts.example.com"}
+	got := h.ActiveHost("", "")
+	if got != "hosts.example.com" {
+		t.Errorf("hosts.yml should override config.yml: got %q, want %q", got, "hosts.example.com")
+	}
+}
+
+// TestActiveHostFlagOverridesConfigYML verifies that the flag argument wins
+// even when config.yml has a custom default_host.
+func TestActiveHostFlagOverridesConfigYML(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	// Write config.yml with a custom default_host
+	cfg := config.Config{ConfigVersion: "1", DefaultHost: "config.example.com"}
+	if err := config.WriteConfig(cfg); err != nil {
+		t.Fatalf("WriteConfig: %v", err)
+	}
+
+	h := config.HostsConfig{}
+	got := h.ActiveHost("flag.example.com", "")
+	if got != "flag.example.com" {
+		t.Errorf("flag should override config.yml: got %q, want %q", got, "flag.example.com")
+	}
+}
+
 // Ensure HostsConfig marshals correctly for round-trip verification via raw yaml
 func TestHostsConfigMarshal(t *testing.T) {
 	h := config.HostsConfig{
