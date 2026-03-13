@@ -60,6 +60,17 @@ func WriteCache(name string, data json.RawMessage) error {
 	return os.WriteFile(filepath.Join(dir, name), b, 0o600)
 }
 
+// WriteRaw writes pre-serialized bytes directly to the named cache file.
+// This is useful for tests that need to inject a cache entry with a specific
+// FetchedAt timestamp.
+func WriteRaw(name string, b []byte) error {
+	dir := CacheDir()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, name), b, 0o600)
+}
+
 // IsStale reports whether the cache entry is older than the given TTL.
 func IsStale(entry *CacheEntry, ttl time.Duration) bool {
 	return time.Since(entry.FetchedAt) > ttl
