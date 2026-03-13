@@ -42,7 +42,8 @@ func DeviceLogin(host string, ios *iostreams.IOStreams) (string, error) {
 		}
 	}
 
-	codeResp, err := requestDeviceCode(ctx, host, hostHeaders)
+	baseURL := khhttp.BuildBaseURL(host)
+	codeResp, err := requestDeviceCode(ctx, baseURL, hostHeaders)
 	if err != nil {
 		return "", err
 	}
@@ -55,7 +56,7 @@ func DeviceLogin(host string, ios *iostreams.IOStreams) (string, error) {
 		interval = 5 * time.Second
 	}
 
-	token, err := pollDeviceToken(ctx, host, codeResp.DeviceCode, interval, hostHeaders)
+	token, err := pollDeviceToken(ctx, baseURL, codeResp.DeviceCode, interval, hostHeaders)
 	if err != nil {
 		return "", err
 	}
@@ -67,18 +68,19 @@ func DeviceLogin(host string, ios *iostreams.IOStreams) (string, error) {
 	return token, nil
 }
 
-func requestDeviceCode(ctx context.Context, host string, headers map[string]string) (deviceCodeResponse, error) {
+func requestDeviceCode(ctx context.Context, baseURL string, headers map[string]string) (deviceCodeResponse, error) {
 	body, err := json.Marshal(map[string]string{"client_id": "kh-cli"})
 	if err != nil {
 		return deviceCodeResponse{}, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		khhttp.BuildBaseURL(host)+"/api/auth/device/code", bytes.NewReader(body))
+		baseURL+"/api/auth/device/code", bytes.NewReader(body))
 	if err != nil {
 		return deviceCodeResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", baseURL)
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
@@ -101,7 +103,7 @@ func requestDeviceCode(ctx context.Context, host string, headers map[string]stri
 	return codeResp, nil
 }
 
-func pollDeviceToken(ctx context.Context, host, deviceCode string, interval time.Duration, headers map[string]string) (string, error) {
+func pollDeviceToken(ctx context.Context, baseURL, deviceCode string, interval time.Duration, headers map[string]string) (string, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -109,7 +111,7 @@ func pollDeviceToken(ctx context.Context, host, deviceCode string, interval time
 		case <-time.After(interval):
 		}
 
-		tokenResp, err := checkDeviceToken(ctx, host, deviceCode, headers)
+		tokenResp, err := checkDeviceToken(ctx, baseURL, deviceCode, headers)
 		if err != nil {
 			return "", err
 		}
@@ -133,7 +135,7 @@ func pollDeviceToken(ctx context.Context, host, deviceCode string, interval time
 	}
 }
 
-func checkDeviceToken(ctx context.Context, host, deviceCode string, headers map[string]string) (deviceTokenResponse, error) {
+func checkDeviceToken(ctx context.Context, baseURL, deviceCode string, headers map[string]string) (deviceTokenResponse, error) {
 	body, err := json.Marshal(map[string]string{
 		"grant_type":  "urn:ietf:params:oauth:grant-type:device_code",
 		"device_code": deviceCode,
@@ -144,11 +146,12 @@ func checkDeviceToken(ctx context.Context, host, deviceCode string, headers map[
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		khhttp.BuildBaseURL(host)+"/api/auth/device/token", bytes.NewReader(body))
+		baseURL+"/api/auth/device/token", bytes.NewReader(body))
 	if err != nil {
 		return deviceTokenResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", baseURL)
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
