@@ -10,20 +10,20 @@ import (
 	"github.com/keeperhub/cli/pkg/iostreams"
 )
 
-func TestLoginCmd_BrowserFlow(t *testing.T) {
+func TestLoginCmd_DefaultDeviceFlow(t *testing.T) {
 	// Isolate from real config.yml so ActiveHost returns the hardcoded default.
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	ios, buf, _, _ := iostreams.Test()
 
-	browserCalled := false
+	deviceCalled := false
 	auth.BrowserLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		browserCalled = true
-		return "test-token", nil
+		t.Fatal("BrowserLogin should not be called in default flow")
+		return "", nil
 	}
 	auth.DeviceLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		t.Fatal("DeviceLogin should not be called in browser flow")
-		return "", nil
+		deviceCalled = true
+		return "test-token", nil
 	}
 	auth.SetTokenFunc = func(host, token string) error { return nil }
 	auth.FetchTokenInfoFunc = func(host, token string) (internalauth.TokenInfo, error) {
@@ -38,8 +38,8 @@ func TestLoginCmd_BrowserFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !browserCalled {
-		t.Error("expected BrowserLogin to be called")
+	if !deviceCalled {
+		t.Error("expected DeviceLogin to be called")
 	}
 	out := buf.String()
 	if !strings.Contains(out, "app.keeperhub.com") {
@@ -47,17 +47,19 @@ func TestLoginCmd_BrowserFlow(t *testing.T) {
 	}
 }
 
-func TestLoginCmd_NoBrowserFlag(t *testing.T) {
+func TestLoginCmd_BrowserFlag(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	ios, _, _, _ := iostreams.Test()
 
-	deviceCalled := false
+	browserCalled := false
 	auth.BrowserLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		t.Fatal("BrowserLogin should not be called with --no-browser")
-		return "", nil
+		browserCalled = true
+		return "test-token", nil
 	}
 	auth.DeviceLoginFunc = func(host string, ios2 *iostreams.IOStreams) (string, error) {
-		deviceCalled = true
-		return "test-token", nil
+		t.Fatal("DeviceLogin should not be called with --browser")
+		return "", nil
 	}
 	auth.SetTokenFunc = func(host, token string) error { return nil }
 	auth.FetchTokenInfoFunc = func(host, token string) (internalauth.TokenInfo, error) {
@@ -66,14 +68,14 @@ func TestLoginCmd_NoBrowserFlag(t *testing.T) {
 
 	f := &cmdutil.Factory{IOStreams: ios}
 	cmd := auth.NewLoginCmd(f)
-	cmd.SetArgs([]string{"--no-browser"})
+	cmd.SetArgs([]string{"--browser"})
 
 	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !deviceCalled {
-		t.Error("expected DeviceLogin to be called")
+	if !browserCalled {
+		t.Error("expected BrowserLogin to be called")
 	}
 }
 
