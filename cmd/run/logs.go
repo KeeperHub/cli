@@ -94,7 +94,7 @@ func NewLogsCmd(f *cmdutil.Factory) *cobra.Command {
 				host = cfg.DefaultHost
 			}
 			if host == "" {
-				host = "app.keeperhub.io"
+				host = "app.keeperhub.com"
 			}
 
 			url := khhttp.BuildBaseURL(host) + "/api/workflows/executions/" + runID + "/logs"

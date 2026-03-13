@@ -48,7 +48,7 @@ func NewCancelCmd(f *cmdutil.Factory) *cobra.Command {
 				host = cfg.DefaultHost
 			}
 			if host == "" {
-				host = "app.keeperhub.io"
+				host = "app.keeperhub.com"
 			}
 
 			// Confirmation: skip if --yes or non-TTY (auto-proceed in non-interactive mode).

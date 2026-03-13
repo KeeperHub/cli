@@ -19,7 +19,7 @@ all valid keys.
 
 See also: kh config list, kh config get`,
 		Example: `  # Set the default host
-  kh config set default_host app.keeperhub.io
+  kh config set default_host app.keeperhub.com
 
   # Point CLI at a self-hosted instance
   kh config set default_host https://kh.mycompany.io`,

@@ -18,7 +18,7 @@ kh config set <key> <value> [flags]
 
 ```
   # Set the default host
-  kh config set default_host app.keeperhub.io
+  kh config set default_host app.keeperhub.com
 
   # Point CLI at a self-hosted instance
   kh config set default_host https://kh.mycompany.io
@@ -33,7 +33,7 @@ kh config set <key> <value> [flags]
 ### Options inherited from parent commands
 
 ```
-  -H, --host string   KeeperHub host (default: app.keeperhub.io)
+  -H, --host string   KeeperHub host (default: app.keeperhub.com)
       --jq string     Filter JSON output with a jq expression
       --json          Output as JSON
       --no-color      Disable color output

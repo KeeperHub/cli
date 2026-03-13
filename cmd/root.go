@@ -38,7 +38,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.PersistentFlags().String("jq", "", "Filter JSON output with a jq expression")
 	cmd.PersistentFlags().BoolP("yes", "y", false, "Skip confirmation prompts")
 	cmd.PersistentFlags().Bool("no-color", false, "Disable color output")
-	cmd.PersistentFlags().StringP("host", "H", "", "KeeperHub host (default: app.keeperhub.io)")
+	cmd.PersistentFlags().StringP("host", "H", "", "KeeperHub host (default: app.keeperhub.com)")
 
 	cmd.AddCommand(action.NewActionCmd(f))
 	cmd.AddCommand(auth.NewAuthCmd(f))

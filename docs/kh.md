@@ -6,7 +6,7 @@ KeeperHub CLI
 
 ```
   -h, --help          help for kh
-  -H, --host string   KeeperHub host (default: app.keeperhub.io)
+  -H, --host string   KeeperHub host (default: app.keeperhub.com)
       --jq string     Filter JSON output with a jq expression
       --json          Output as JSON
       --no-color      Disable color output

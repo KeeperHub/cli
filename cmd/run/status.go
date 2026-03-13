@@ -78,7 +78,7 @@ See also: kh r l, kh r cancel, kh wf run`,
 				host = cfg.DefaultHost
 			}
 			if host == "" {
-				host = "app.keeperhub.io"
+				host = "app.keeperhub.com"
 			}
 
 			watch, _ := cmd.Flags().GetBool("watch")
