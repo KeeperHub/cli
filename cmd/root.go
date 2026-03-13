@@ -16,6 +16,7 @@ import (
 	"github.com/keeperhub/cli/cmd/serve"
 	"github.com/keeperhub/cli/cmd/tag"
 	"github.com/keeperhub/cli/cmd/template"
+	"github.com/keeperhub/cli/cmd/update"
 	"github.com/keeperhub/cli/cmd/version"
 	"github.com/keeperhub/cli/cmd/wallet"
 	"github.com/keeperhub/cli/cmd/workflow"
@@ -53,6 +54,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(serve.NewServeCmd(f))
 	cmd.AddCommand(tag.NewTagCmd(f))
 	cmd.AddCommand(template.NewTemplateCmd(f))
+	cmd.AddCommand(update.NewUpdateCmd(f))
 	cmd.AddCommand(version.NewVersionCmd(f))
 	cmd.AddCommand(wallet.NewWalletCmd(f))
 	cmd.AddCommand(workflow.NewWorkflowCmd(f))
