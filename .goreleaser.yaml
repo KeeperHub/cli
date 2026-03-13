@@ -1,4 +1,7 @@
 version: 2
+before:
+  hooks:
+    - ./scripts/completions.sh
 builds:
   - main: ./cmd/kh
     binary: kh
@@ -20,5 +23,21 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - completions/*
 checksum:
   name_template: checksums.txt
+homebrew_casks:
+  - repository:
+      owner: keeperhub
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://github.com/keeperhub/cli"
+    description: "KeeperHub CLI -- manage workflows, executions, and Web3 automation"
+    license: MIT
+    completions:
+      bash: "completions/kh.bash"
+      zsh: "completions/kh.zsh"
+      fish: "completions/kh.fish"
+    test: |
+      system "#{bin}/kh version"
