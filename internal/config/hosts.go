@@ -65,7 +65,7 @@ func WriteHosts(cfg HostsConfig) error {
 }
 
 // ActiveHost resolves the active host using the priority chain:
-// flagHost > envHost > h.DefaultHost > "app.keeperhub.io"
+// flagHost > envHost > h.DefaultHost > config.yml DefaultHost > "app.keeperhub.io"
 func (h *HostsConfig) ActiveHost(flagHost, envHost string) string {
 	if flagHost != "" {
 		return flagHost
@@ -75,6 +75,9 @@ func (h *HostsConfig) ActiveHost(flagHost, envHost string) string {
 	}
 	if h.DefaultHost != "" {
 		return h.DefaultHost
+	}
+	if cfg, err := ReadConfig(); err == nil && cfg.DefaultHost != "" && cfg.DefaultHost != defaultHost {
+		return cfg.DefaultHost
 	}
 	return defaultHost
 }

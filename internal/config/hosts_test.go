@@ -10,6 +10,10 @@ import (
 )
 
 func TestActiveHostFallback(t *testing.T) {
+	// Use an empty temp dir so no config.yml exists, ensuring the hardcoded default is used.
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
 	h := config.HostsConfig{}
 	got := h.ActiveHost("", "")
 	if got != "app.keeperhub.io" {

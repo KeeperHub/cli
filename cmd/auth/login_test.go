@@ -11,6 +11,9 @@ import (
 )
 
 func TestLoginCmd_BrowserFlow(t *testing.T) {
+	// Isolate from real config.yml so ActiveHost returns the hardcoded default.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	ios, buf, _, _ := iostreams.Test()
 
 	browserCalled := false
