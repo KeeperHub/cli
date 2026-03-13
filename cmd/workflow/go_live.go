@@ -81,7 +81,7 @@ func NewGoLiveCmd(f *cmdutil.Factory) *cobra.Command {
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusUnauthorized {
-				return fmt.Errorf("HTTP 401: Unauthorized. This command requires interactive login. Run 'kh auth login' first.")
+				return fmt.Errorf("HTTP 401: unauthorized, this command requires interactive login, run 'kh auth login' first")
 			}
 			if resp.StatusCode != http.StatusOK {
 				return khhttp.NewAPIError(resp)

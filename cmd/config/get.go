@@ -27,11 +27,11 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 			case "default_host":
 				value = cfg.DefaultHost
 			default:
-				return fmt.Errorf("X Config key not set: %s", key)
+				return fmt.Errorf("config key not set: %s", key)
 			}
 
 			if value == "" {
-				return fmt.Errorf("X Config key not set: %s", key)
+				return fmt.Errorf("config key not set: %s", key)
 			}
 
 			fmt.Fprintln(f.IOStreams.Out, value)

@@ -112,9 +112,9 @@ func pollDeviceToken(ctx context.Context, host, deviceCode string, interval time
 		case "slow_down":
 			interval += 5 * time.Second
 		case "expired_token":
-			return "", errors.New("Device code expired. Run 'kh auth login --no-browser' again.")
+			return "", errors.New("device code expired, run 'kh auth login --no-browser' again")
 		case "access_denied":
-			return "", errors.New("Authentication denied.")
+			return "", errors.New("authentication denied")
 		default:
 			return "", fmt.Errorf("unexpected device token error: %s", tokenResp.Error)
 		}

@@ -168,6 +168,7 @@ func TestPauseHasYesFlag(t *testing.T) {
 	if flag == nil {
 		flag = pauseCmd.InheritedFlags().Lookup("yes")
 	}
+	_ = flag
 	// The test just verifies pause command exists and is wired correctly
 	assert.NotNil(t, pauseCmd)
 }

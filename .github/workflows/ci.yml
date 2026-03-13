@@ -33,7 +33,7 @@ jobs:
           go-version-file: go.mod
       - name: Check docs are up to date
         run: |
-          cd docs && go generate
+          go generate ./docs/
           git diff --exit-code docs/
   integration-test:
     runs-on: ubuntu-latest

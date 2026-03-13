@@ -8,7 +8,7 @@ func NewCompletionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:       "completion <shell>",
 		Short:     "Generate shell completion scripts",
-		Args:      cobra.ExactValidArgs(1),
+		Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
 		Long: `Generate shell completion scripts for kh. Source the output in your shell
 profile to enable tab completion for all kh commands and flags.

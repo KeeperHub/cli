@@ -8,8 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var validConfigKeys = []string{"default_host"}
-
 func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set <key> <value>",
@@ -38,7 +36,7 @@ See also: kh config list, kh config get`,
 			case "default_host":
 				cfg.DefaultHost = value
 			default:
-				return fmt.Errorf("X Unknown config key: %s\nHint: use 'kh config list' to see available keys", key)
+				return fmt.Errorf("unknown config key: %s\nhint: use 'kh config list' to see available keys", key)
 			}
 
 			if err := internalconfig.WriteConfig(cfg); err != nil {

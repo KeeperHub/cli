@@ -61,7 +61,7 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			if resolved.Method == internalauth.AuthMethodNone {
-				return errors.New("Not authenticated. Run 'kh auth login' to sign in.")
+				return errors.New("not authenticated, run 'kh auth login' to sign in")
 			}
 
 			info, err := FetchTokenInfoFunc(host, resolved.Token)
