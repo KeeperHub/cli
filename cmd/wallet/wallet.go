@@ -12,6 +12,9 @@ func NewWalletCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases: []string{"w"},
 	}
 
+	cmd.PersistentFlags().Bool("json", false, "Output as JSON")
+	cmd.PersistentFlags().String("jq", "", "Filter JSON output with a jq expression")
+
 	cmd.AddCommand(NewBalanceCmd(f))
 	cmd.AddCommand(NewTokensCmd(f))
 
