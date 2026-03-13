@@ -73,7 +73,7 @@ func TestReadConfigInvalidYAML(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid YAML, got nil")
 	}
-	if err.Error() != "Config file is invalid. Run 'kh auth login' to reset it." {
+	if err.Error() != "config file is invalid, run 'kh auth login' to reset it" {
 		t.Errorf("unexpected error message: %q", err.Error())
 	}
 }
