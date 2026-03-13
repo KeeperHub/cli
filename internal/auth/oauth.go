@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +20,9 @@ import (
 
 // browserOpener opens a URL in the default browser. Tests override this.
 var browserOpener = openBrowser
+
+// socialSignInURLFunc fetches the OAuth redirect URL from the server. Tests override this.
+var socialSignInURLFunc = fetchSocialSignInURL
 
 func openBrowser(url string) error {
 	var cmd string
@@ -80,7 +85,16 @@ func BrowserLogin(host string, ios *iostreams.IOStreams) (string, error) {
 		}
 	}()
 
-	authURL := fmt.Sprintf("%s/api/auth/sign-in/social?provider=github&callbackURL=http://127.0.0.1:%d/callback", khhttp.BuildBaseURL(host), port)
+	// Better Auth's /sign-in/social is a POST endpoint that returns the OAuth redirect URL.
+	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
+	baseURL := khhttp.BuildBaseURL(host)
+
+	authURL, postErr := socialSignInURLFunc(baseURL, "github", callbackURL)
+	if postErr != nil {
+		_ = srv.Close()
+		return "", fmt.Errorf("initiating social sign-in: %w", postErr)
+	}
+
 	fmt.Fprintf(ios.Out, "Opening browser to authenticate...\n")
 
 	if err := browserOpener(authURL); err != nil {
@@ -111,6 +125,41 @@ func BrowserLogin(host string, ios *iostreams.IOStreams) (string, error) {
 	}
 
 	return token, nil
+}
+
+// fetchSocialSignInURL POSTs to Better Auth's /sign-in/social endpoint and
+// returns the OAuth provider redirect URL from the JSON response.
+func fetchSocialSignInURL(baseURL, provider, callbackURL string) (string, error) {
+	body, err := json.Marshal(map[string]string{
+		"provider":    provider,
+		"callbackURL": callbackURL,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := http.Post(baseURL+"/api/auth/sign-in/social", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("server returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		URL      string `json:"url"`
+		Redirect bool   `json:"redirect"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decoding response: %w", err)
+	}
+	if result.URL == "" {
+		return "", errors.New("server returned empty redirect URL")
+	}
+	return result.URL, nil
 }
 
 // ReadTokenFromStdin reads a token from ios.In, trims whitespace, and returns it.

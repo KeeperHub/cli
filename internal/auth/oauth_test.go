@@ -21,6 +21,15 @@ func installBrowserCapture(t *testing.T) <-chan string {
 		return nil
 	}
 	t.Cleanup(func() { browserOpener = openBrowser })
+
+	// Override socialSignInURLFunc to return callbackURL as the "redirect URL"
+	// so the browser opener receives a URL containing the callback port.
+	origSocial := socialSignInURLFunc
+	socialSignInURLFunc = func(baseURL, provider, callbackURL string) (string, error) {
+		return baseURL + "/api/auth/sign-in/social?provider=" + provider + "&callbackURL=" + callbackURL, nil
+	}
+	t.Cleanup(func() { socialSignInURLFunc = origSocial })
+
 	return ch
 }
 
