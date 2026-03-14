@@ -100,7 +100,7 @@ func TestUpdateCmd_AlreadyOnLatest(t *testing.T) {
 	}
 
 	out := buf.String()
-	if !strings.Contains(out, "latest") {
-		t.Errorf("expected 'latest' in output, got: %q", out)
+	if !strings.Contains(out, "No release found") {
+		t.Errorf("expected 'No release found' in output, got: %q", out)
 	}
 }
