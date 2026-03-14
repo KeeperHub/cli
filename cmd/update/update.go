@@ -92,7 +92,13 @@ func runUpdate(f *cmdutil.Factory) error {
 		return fmt.Errorf("checking for updates: %w", err)
 	}
 
-	if !found || latest.LessOrEqual(version.Version) {
+	if !found {
+		fmt.Fprintf(f.IOStreams.Out, "No release found.\n")
+		return nil
+	}
+
+	// "dev" means no version was injected via ldflags — always update.
+	if version.Version != "dev" && latest.LessOrEqual(version.Version) {
 		fmt.Fprintf(f.IOStreams.Out, "Already on latest version: %s\n", version.Version)
 		return nil
 	}
