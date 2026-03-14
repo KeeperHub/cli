@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/KeeperHub/cli/compare/v0.4.0...v0.4.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* embed version from release-please manifest ([43743d4](https://github.com/KeeperHub/cli/commit/43743d4e69c916afafef99afc10a6026bbd10e8a))
+* embed version from release-please manifest so kh update doesn't panic ([958ea26](https://github.com/KeeperHub/cli/commit/958ea2658fb4f5aa9dd31ed0114a6fce2ad68509))
+
 ## [0.4.0](https://github.com/KeeperHub/cli/compare/v0.3.0...v0.4.0) (2026-03-13)
 
 
