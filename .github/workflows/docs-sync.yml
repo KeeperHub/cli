@@ -1,9 +1,9 @@
 name: Sync CLI Docs to KeeperHub
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
-  workflow_dispatch:
 
 permissions:
   contents: read
