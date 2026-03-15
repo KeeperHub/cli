@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.1](https://github.com/KeeperHub/cli/compare/v0.5.0...v0.5.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* docs-sync workflow_dispatch trigger ([9dc2605](https://github.com/KeeperHub/cli/commit/9dc2605e63e7cb2b50a4f3f227720d6e2ad9a30b))
+* fix YAML syntax error in docs sync workflow ([fb83447](https://github.com/KeeperHub/cli/commit/fb834472ee1c16a3b1e30e99fe4d07c02eac2948))
+* remove blank line in workflow YAML that breaks parser ([783e989](https://github.com/KeeperHub/cli/commit/783e98940919b48b40f1f984de2c588e322a1a48))
+* remove empty braces from workflow_dispatch trigger ([eeb7957](https://github.com/KeeperHub/cli/commit/eeb7957cfc5639776303976995d963f85d35389f))
+* rename docs-sync workflow to fix workflow_dispatch ([be3955c](https://github.com/KeeperHub/cli/commit/be3955c79368e6ef7f1016573e6daf1d8908de92))
+* rename docs-sync workflow to force new GitHub workflow ID ([9bcbbfc](https://github.com/KeeperHub/cli/commit/9bcbbfc64d1cd913612c441106a6ed1020ea85a4))
+* reorder docs-sync triggers to fix workflow_dispatch ([4dc3ed2](https://github.com/KeeperHub/cli/commit/4dc3ed249d7105f2019b8bdf4e1f5f234ec45b76))
+* reorder docs-sync triggers to fix workflow_dispatch ([22d4a6b](https://github.com/KeeperHub/cli/commit/22d4a6b2d2c40975e0522144d1d47594dfe28bc6))
+
 ## [0.5.0](https://github.com/KeeperHub/cli/compare/v0.4.1...v0.5.0) (2026-03-15)
 
 
