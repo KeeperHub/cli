@@ -1,6 +1,6 @@
 # kh - KeeperHub CLI
 
-Command-line interface for KeeperHub, the Web3 automation platform.
+Command-line interface for [KeeperHub](https://app.keeperhub.com/hub), the Web3 automation platform.
 
 ## Install
 
