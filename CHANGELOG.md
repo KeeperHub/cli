@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/KeeperHub/cli/compare/v0.4.1...v0.5.0) (2026-03-15)
+
+
+### Features
+
+* add workflow create, delete, update commands and MCP workflow tools ([e36110d](https://github.com/KeeperHub/cli/commit/e36110d2a22d99aaf8d2e6271ded81fbf8c5ca73))
+* add workflow CRUD commands and MCP workflow tools ([0a174d4](https://github.com/KeeperHub/cli/commit/0a174d4addbcd5d97cd057203262df10eb409e9f))
+
+
+### Bug Fixes
+
+* ensure create request always includes nodes and edges arrays ([ef27c06](https://github.com/KeeperHub/cli/commit/ef27c06263cb250cb488cc1061bbe1f627856538))
+* show clear error when deleting workflow with existing runs ([5fe4422](https://github.com/KeeperHub/cli/commit/5fe442270a41e0ba135bca4a7a59e278b60bd735))
+
 ## [0.4.1](https://github.com/KeeperHub/cli/compare/v0.4.0...v0.4.1) (2026-03-14)
 
 
