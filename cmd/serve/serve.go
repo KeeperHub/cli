@@ -61,5 +61,7 @@ func runServeMCP(f *cmdutil.Factory) error {
 		fmt.Fprintf(f.IOStreams.ErrOut, "Warning: tool registration failed: %v\n", err)
 	}
 
+	registerStaticTools(server, f)
+
 	return server.Run(context.Background(), &mcp.StdioTransport{})
 }

@@ -19,11 +19,11 @@ func newTestFactory() *cmdutil.Factory {
 	}
 }
 
-func TestWorkflowCmdHas5Subcommands(t *testing.T) {
+func TestWorkflowCmdHas8Subcommands(t *testing.T) {
 	f := newTestFactory()
 	wfCmd := workflow.NewWorkflowCmd(f)
 	cmds := wfCmd.Commands()
-	assert.Equal(t, 5, len(cmds), "expected 5 subcommands: list, run, get, go-live, pause")
+	assert.Equal(t, 8, len(cmds), "expected 8 subcommands: list, run, get, go-live, pause, create, delete, update")
 }
 
 func TestWorkflowCmdHasAlias(t *testing.T) {
