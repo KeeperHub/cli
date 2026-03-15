@@ -17,8 +17,8 @@ import (
 type createRequest struct {
 	Name        string        `json:"name"`
 	Description string        `json:"description,omitempty"`
-	Nodes       []interface{} `json:"nodes,omitempty"`
-	Edges       []interface{} `json:"edges,omitempty"`
+	Nodes       []interface{} `json:"nodes"`
+	Edges       []interface{} `json:"edges"`
 }
 
 type createResponse struct {
@@ -73,6 +73,8 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 			body := createRequest{
 				Name:        name,
 				Description: description,
+				Nodes:       []interface{}{},
+				Edges:       []interface{}{},
 			}
 
 			// Load nodes/edges from file if provided
