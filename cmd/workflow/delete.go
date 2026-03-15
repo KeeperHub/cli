@@ -62,12 +62,15 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 
 			resp, err := client.Do(req)
 			if err != nil {
-				return err
+				return fmt.Errorf("cannot delete workflow %s: it may have existing runs that prevent deletion", workflowID)
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusNotFound {
 				return cmdutil.NotFoundError{Err: fmt.Errorf("workflow %q not found", workflowID)}
+			}
+			if resp.StatusCode == http.StatusInternalServerError {
+				return fmt.Errorf("cannot delete workflow %s: workflow has existing runs that prevent deletion", workflowID)
 			}
 			if resp.StatusCode != http.StatusOK {
 				return khhttp.NewAPIError(resp)
