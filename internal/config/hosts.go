@@ -3,8 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -83,14 +85,52 @@ func (h *HostsConfig) ActiveHost(flagHost, envHost string) string {
 }
 
 // HostEntry looks up the HostConfig for the given hostname.
-// Returns the entry and true if found, or an empty HostConfig and false otherwise.
+// It tries the raw value first, then falls back to a bare hostname (scheme stripped)
+// so that --host https://app-staging.keeperhub.com matches a hosts.yml key of
+// app-staging.keeperhub.com.
 func (h *HostsConfig) HostEntry(hostname string) (HostConfig, bool) {
-	entry, ok := h.Hosts[hostname]
-	return entry, ok
+	if entry, ok := h.Hosts[hostname]; ok {
+		return entry, true
+	}
+	bare := stripScheme(hostname)
+	if bare != hostname {
+		if entry, ok := h.Hosts[bare]; ok {
+			return entry, true
+		}
+	}
+	return HostConfig{}, false
+}
+
+// stripScheme removes the URL scheme (http:// or https://) and any trailing
+// slash from a host string, returning just the hostname[:port].
+func stripScheme(host string) string {
+	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+		if u, err := url.Parse(host); err == nil {
+			return u.Host
+		}
+	}
+	return strings.TrimRight(host, "/")
+}
+
+// resolveHostKey returns the canonical key for a host in the hosts map.
+// If a bare-hostname entry already exists for a full-URL host, it returns the
+// bare hostname so the token is stored alongside existing headers (e.g. CF-Access).
+func resolveHostKey(hosts map[string]HostConfig, host string) string {
+	if _, ok := hosts[host]; ok {
+		return host
+	}
+	bare := stripScheme(host)
+	if bare != host {
+		if _, ok := hosts[bare]; ok {
+			return bare
+		}
+	}
+	// No existing entry -- prefer bare hostname for cleanliness.
+	return bare
 }
 
 // SetHostToken updates the token for a specific host in the hosts config.
-// If the host entry doesn't exist, it creates one.
+// If a bare-hostname entry already exists, the token is merged into it.
 func SetHostToken(host, token string) error {
 	hosts, err := ReadHosts()
 	if err != nil {
@@ -99,9 +139,10 @@ func SetHostToken(host, token string) error {
 	if hosts.Hosts == nil {
 		hosts.Hosts = make(map[string]HostConfig)
 	}
-	entry := hosts.Hosts[host]
+	key := resolveHostKey(hosts.Hosts, host)
+	entry := hosts.Hosts[key]
 	entry.Token = token
-	hosts.Hosts[host] = entry
+	hosts.Hosts[key] = entry
 	return WriteHosts(hosts)
 }
 
@@ -112,9 +153,10 @@ func ClearHostToken(host string) error {
 	if err != nil {
 		return err
 	}
-	if entry, ok := hosts.Hosts[host]; ok {
+	key := resolveHostKey(hosts.Hosts, host)
+	if entry, ok := hosts.Hosts[key]; ok {
 		entry.Token = ""
-		hosts.Hosts[host] = entry
+		hosts.Hosts[key] = entry
 		return WriteHosts(hosts)
 	}
 	return nil
