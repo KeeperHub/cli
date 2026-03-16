@@ -20,6 +20,11 @@ type Factory struct {
 	// The client automatically injects version headers and per-host credentials.
 	HTTPClient func() (*khhttp.Client, error)
 
+	// BaseURL returns the resolved base URL for API requests, accounting for
+	// --host flag, KH_HOST env, and config defaults. Use this instead of
+	// ResolveHost when a cobra.Command is not available (e.g. MCP serve mode).
+	BaseURL func() string
+
 	// IOStreams provides the standard input/output streams.
 	IOStreams *iostreams.IOStreams
 }
