@@ -99,6 +99,8 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name || 'manual' }}
         run: |
           cd keeperhub
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           # Sanitize tag for branch name
           SAFE_TAG=$(echo "$RELEASE_TAG" | sed 's/[^a-zA-Z0-9.-]/-/g')
