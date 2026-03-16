@@ -63,7 +63,7 @@ func DeviceLogin(host string, ios *iostreams.IOStreams) (string, error) {
 		return "", err
 	}
 
-	if storeErr := SetToken(host, token); storeErr != nil {
+	if storeErr := config.SetHostToken(host, token); storeErr != nil {
 		return "", fmt.Errorf("storing token: %w", storeErr)
 	}
 

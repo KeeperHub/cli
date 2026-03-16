@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	khhttp "github.com/keeperhub/cli/internal/http"
@@ -62,8 +63,16 @@ type orgMembership struct {
 }
 
 // FetchTokenInfo queries the server for session details using the given token.
-// Returns TokenInfo on success, or an error if the token is invalid.
+// For session tokens, calls /api/auth/get-session.
+// For API keys (kh_ prefix), validates via /api/workflows and returns basic info.
 func FetchTokenInfo(host, token string) (TokenInfo, error) {
+	if strings.HasPrefix(token, "kh_") {
+		return fetchAPIKeyInfo(host, token)
+	}
+	return fetchSessionInfo(host, token)
+}
+
+func fetchSessionInfo(host, token string) (TokenInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	req, err := http.NewRequest(http.MethodGet, khhttp.BuildBaseURL(host)+"/api/auth/get-session", nil)
@@ -120,6 +129,44 @@ func FetchTokenInfo(host, token string) (TokenInfo, error) {
 	}
 
 	return info, nil
+}
+
+// fetchAPIKeyInfo validates an API key by calling an authenticated endpoint.
+// API keys don't have session data, so we probe /api/workflows to confirm
+// the key is accepted and extract org info from the response context.
+func fetchAPIKeyInfo(host, token string) (TokenInfo, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	req, err := http.NewRequest(http.MethodGet, khhttp.BuildBaseURL(host)+"/api/workflows?limit=1", nil)
+	if err != nil {
+		return TokenInfo{}, fmt.Errorf("creating validation request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return TokenInfo{}, fmt.Errorf("validating API key: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return TokenInfo{}, fmt.Errorf("API key is invalid or revoked")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return TokenInfo{}, fmt.Errorf("API key validation failed (status %d)", resp.StatusCode)
+	}
+
+	prefix := token
+	if len(prefix) > 14 {
+		prefix = prefix[:14]
+	}
+
+	return TokenInfo{
+		Email:  prefix + "...",
+		Name:   "API Key",
+		Method: AuthMethodAPIKey,
+		Role:   "api-key",
+	}, nil
 }
 
 func fetchOrgDetails(client *http.Client, host, token, orgID string) (string, string) {

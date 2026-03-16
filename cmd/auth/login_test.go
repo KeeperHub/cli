@@ -43,6 +43,7 @@ func TestLoginCmd_DefaultDeviceFlow(t *testing.T) {
 }
 
 func TestLoginCmd_WithTokenFlag(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	ios, buf, _, _ := iostreams.Test()
 	ios.In = strings.NewReader("my-token-from-stdin\n")
 

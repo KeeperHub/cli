@@ -18,10 +18,10 @@ var DeviceLoginFunc = func(host string, ios *iostreams.IOStreams) (string, error
 	return internalauth.DeviceLogin(host, ios)
 }
 
-// SetTokenFunc is the function used to store a token in the keyring.
-// Tests may override this to avoid touching the real keyring.
+// SetTokenFunc is the function used to store a token in hosts.yml.
+// Tests may override this to avoid touching the real config.
 var SetTokenFunc = func(host, token string) error {
-	return internalauth.SetToken(host, token)
+	return config.SetHostToken(host, token)
 }
 
 // FetchTokenInfoFunc is the function used to fetch session details from the server.

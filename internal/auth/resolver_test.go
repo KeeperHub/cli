@@ -49,18 +49,18 @@ func writeHostsFile(t *testing.T, host, token string) {
 	content := "hosts:\n  " + host + ":\n    token: " + token + "\n"
 	require.NoError(t, os.WriteFile(hostsFile, []byte(content), 0o600))
 
-	origHome := os.Getenv("XDG_CONFIG_HOME")
-	require.NoError(t, os.Setenv("XDG_CONFIG_HOME", dir))
-	t.Cleanup(func() {
-		if origHome == "" {
-			os.Unsetenv("XDG_CONFIG_HOME")
-		} else {
-			os.Setenv("XDG_CONFIG_HOME", origHome)
-		}
-	})
+	t.Setenv("XDG_CONFIG_HOME", dir)
+}
+
+// isolateHostsFile sets XDG_CONFIG_HOME to an empty temp dir so
+// ResolveToken does not read the user's real hosts.yml.
+func isolateHostsFile(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 }
 
 func TestResolveToken_EnvVar(t *testing.T) {
+	isolateHostsFile(t)
 	setupEmptyKeyring(t)
 	t.Setenv("KH_API_KEY", "kh_test123")
 
@@ -69,16 +69,6 @@ func TestResolveToken_EnvVar(t *testing.T) {
 	require.Equal(t, "kh_test123", rt.Token)
 	require.Equal(t, AuthMethodAPIKey, rt.Method)
 	require.Equal(t, testHost, rt.Host)
-}
-
-func TestResolveToken_Keyring(t *testing.T) {
-	setupKeyringWithToken(t, testHost, "keyring_token_abc")
-	t.Setenv("KH_API_KEY", "")
-
-	rt, err := ResolveToken(testHost)
-	require.NoError(t, err)
-	require.Equal(t, "keyring_token_abc", rt.Token)
-	require.Equal(t, AuthMethodToken, rt.Method)
 }
 
 func TestResolveToken_HostsYML(t *testing.T) {
@@ -92,7 +82,20 @@ func TestResolveToken_HostsYML(t *testing.T) {
 	require.Equal(t, AuthMethodToken, rt.Method)
 }
 
+func TestResolveToken_KeyringLegacyFallback(t *testing.T) {
+	// hosts.yml has no token for this host, so the keyring fallback is used.
+	isolateHostsFile(t)
+	setupKeyringWithToken(t, testHost, "keyring_token_abc")
+	t.Setenv("KH_API_KEY", "")
+
+	rt, err := ResolveToken(testHost)
+	require.NoError(t, err)
+	require.Equal(t, "keyring_token_abc", rt.Token)
+	require.Equal(t, AuthMethodToken, rt.Method)
+}
+
 func TestResolveToken_None(t *testing.T) {
+	isolateHostsFile(t)
 	setupEmptyKeyring(t)
 	t.Setenv("KH_API_KEY", "")
 
@@ -103,6 +106,7 @@ func TestResolveToken_None(t *testing.T) {
 }
 
 func TestResolveToken_EnvVarPriority(t *testing.T) {
+	isolateHostsFile(t)
 	setupKeyringWithToken(t, testHost, "keyring_token")
 	t.Setenv("KH_API_KEY", "env_wins")
 
@@ -112,13 +116,14 @@ func TestResolveToken_EnvVarPriority(t *testing.T) {
 	require.Equal(t, AuthMethodAPIKey, rt.Method)
 }
 
-func TestResolveToken_KeyringOverHostsYML(t *testing.T) {
-	setupKeyringWithToken(t, testHost, "keyring_takes_precedence")
+func TestResolveToken_HostsYMLOverKeyring(t *testing.T) {
+	// hosts.yml now takes priority over the legacy keyring.
+	setupKeyringWithToken(t, testHost, "keyring_token")
 	t.Setenv("KH_API_KEY", "")
-	writeHostsFile(t, testHost, "hosts_yml_token")
+	writeHostsFile(t, testHost, "hosts_yml_wins")
 
 	rt, err := ResolveToken(testHost)
 	require.NoError(t, err)
-	require.Equal(t, "keyring_takes_precedence", rt.Token)
+	require.Equal(t, "hosts_yml_wins", rt.Token)
 	require.Equal(t, AuthMethodToken, rt.Method)
 }

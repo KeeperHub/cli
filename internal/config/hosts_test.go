@@ -120,6 +120,46 @@ func TestHostEntryLookup(t *testing.T) {
 	}
 }
 
+// TestHostEntrySchemeStripping verifies that HostEntry falls back to a bare
+// hostname when the caller passes a full URL (e.g. --host https://staging.example.com).
+func TestHostEntrySchemeStripping(t *testing.T) {
+	h := config.HostsConfig{
+		Hosts: map[string]config.HostConfig{
+			"app-staging.keeperhub.com": {
+				Headers: map[string]string{
+					"CF-Access-Client-Id":     "abc",
+					"CF-Access-Client-Secret": "def",
+				},
+			},
+		},
+	}
+
+	// Full https:// URL should match bare hostname key
+	entry, ok := h.HostEntry("https://app-staging.keeperhub.com")
+	if !ok {
+		t.Fatal("expected HostEntry to match via scheme stripping")
+	}
+	if entry.Headers["CF-Access-Client-Id"] != "abc" {
+		t.Errorf("CF-Access-Client-Id: got %q, want %q", entry.Headers["CF-Access-Client-Id"], "abc")
+	}
+
+	// Full http:// URL should also match
+	h.Hosts["localhost:3000"] = config.HostConfig{Headers: map[string]string{"X-Test": "1"}}
+	entry, ok = h.HostEntry("http://localhost:3000")
+	if !ok {
+		t.Fatal("expected HostEntry to match http:// via scheme stripping")
+	}
+	if entry.Headers["X-Test"] != "1" {
+		t.Errorf("X-Test: got %q, want %q", entry.Headers["X-Test"], "1")
+	}
+
+	// Bare hostname should still work directly
+	entry, ok = h.HostEntry("app-staging.keeperhub.com")
+	if !ok {
+		t.Fatal("expected direct bare hostname match")
+	}
+}
+
 func TestHostsYAMLCFAccessHeaders(t *testing.T) {
 	rawYAML := `hosts:
   app-staging.keeperhub.com:
