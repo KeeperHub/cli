@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2](https://github.com/KeeperHub/cli/compare/v0.5.1...v0.5.2) (2026-03-16)
+
+
+### Bug Fixes
+
+* multi-host auth with scheme-aware host resolution ([78d76f0](https://github.com/KeeperHub/cli/commit/78d76f0937438ed78a023d5b1875ff87b20d6d67))
+* multi-host auth with scheme-aware host resolution ([bf64626](https://github.com/KeeperHub/cli/commit/bf64626f722817745de2e6bffa065f7ba49b9aed))
+
 ## [0.5.1](https://github.com/KeeperHub/cli/compare/v0.5.0...v0.5.1) (2026-03-15)
 
 
