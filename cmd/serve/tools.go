@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -89,12 +88,7 @@ func MakeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
 			return nil, fmt.Errorf("creating HTTP client: %w", err)
 		}
 
-		cfg, err := f.Config()
-		if err != nil {
-			return nil, fmt.Errorf("reading config: %w", err)
-		}
-
-		url := khhttp.BuildBaseURL(cmdutil.ResolveHost(nil, cfg)) + "/api/execute/" + actionType
+		url := f.BaseURL() + "/api/execute/" + actionType
 		httpReq, err := client.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
 		if err != nil {
 			return nil, fmt.Errorf("building request: %w", err)
@@ -163,12 +157,7 @@ func makeStaticHandler(
 			return nil, fmt.Errorf("creating HTTP client: %w", err)
 		}
 
-		cfg, err := f.Config()
-		if err != nil {
-			return nil, fmt.Errorf("reading config: %w", err)
-		}
-
-		baseURL := khhttp.BuildBaseURL(cmdutil.ResolveHost(nil, cfg))
+		baseURL := f.BaseURL()
 		targetURL := buildURL(args, baseURL)
 
 		var body io.Reader

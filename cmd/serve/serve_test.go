@@ -46,6 +46,7 @@ func newServeFactory(server *httptest.Server, ios *iostreams.IOStreams) *cmdutil
 		IOStreams:   ios,
 		HTTPClient: func() (*khhttp.Client, error) { return client, nil },
 		Config:     func() (config.Config, error) { return config.Config{DefaultHost: server.URL}, nil },
+		BaseURL:    func() string { return server.URL },
 	}
 }
 

@@ -20,27 +20,45 @@ func main() {
 	// rootCmd is created first so the HTTPClient closure can read --host after flag parsing.
 	var rootCmd *cobra.Command
 
+	// resolveActiveHost returns the effective host using the priority chain:
+	// --host flag > KH_HOST env > hosts.yml default > config.yml > built-in default.
+	resolveActiveHost := func() string {
+		var flagHost string
+		if rootCmd != nil {
+			if f := rootCmd.PersistentFlags().Lookup("host"); f != nil {
+				flagHost = f.Value.String()
+			}
+		}
+		envHost := os.Getenv("KH_HOST")
+		hosts, err := config.ReadHosts()
+		if err != nil {
+			if flagHost != "" {
+				return flagHost
+			}
+			if envHost != "" {
+				return envHost
+			}
+			return "app.keeperhub.com"
+		}
+		return hosts.ActiveHost(flagHost, envHost)
+	}
+
 	f := &cmdutil.Factory{
 		AppVersion: version.Version,
 		IOStreams:   ios,
 		Config: func() (config.Config, error) {
 			return config.ReadConfig()
 		},
+		BaseURL: func() string {
+			return khhttp.BuildBaseURL(resolveActiveHost())
+		},
 		HTTPClient: func() (*khhttp.Client, error) {
+			activeHost := resolveActiveHost()
+
 			hosts, err := config.ReadHosts()
 			if err != nil {
 				return nil, err
 			}
-
-			// Priority: --host flag > KH_HOST env > hosts.yml default > built-in default
-			var flagHost string
-			if rootCmd != nil {
-				if f := rootCmd.PersistentFlags().Lookup("host"); f != nil {
-					flagHost = f.Value.String()
-				}
-			}
-			envHost := os.Getenv("KH_HOST")
-			activeHost := hosts.ActiveHost(flagHost, envHost)
 
 			// Resolve token using the auth chain: KH_API_KEY > keyring > hosts.yml
 			resolved, err := auth.ResolveToken(activeHost)

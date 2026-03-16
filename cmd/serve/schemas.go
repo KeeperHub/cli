@@ -38,12 +38,7 @@ func fetchMCPSchemas(f *cmdutil.Factory) (*SchemasResponse, error) {
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
 	}
 
-	cfg, err := f.Config()
-	if err != nil {
-		return nil, fmt.Errorf("reading config: %w", err)
-	}
-
-	url := khhttp.BuildBaseURL(cmdutil.ResolveHost(nil, cfg)) + "/api/mcp/schemas"
+	url := f.BaseURL() + "/api/mcp/schemas"
 	req, err := client.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("building request: %w", err)
