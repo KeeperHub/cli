@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.3](https://github.com/KeeperHub/cli/compare/v0.5.2...v0.5.3) (2026-03-16)
+
+
+### Bug Fixes
+
+* resolve --host flag in MCP serve mode ([aabc8db](https://github.com/KeeperHub/cli/commit/aabc8db1ebd9ae3f17cd31842127c8bef52b2583))
+* resolve --host flag in MCP serve mode ([7435f64](https://github.com/KeeperHub/cli/commit/7435f6425b577195dc4c2fb78120ebd3bb370e5a))
+* set git identity in sync-cli-docs workflow ([479c3cc](https://github.com/KeeperHub/cli/commit/479c3ccd4366c84b5be993b589e2bde6735b1aa5))
+* set git identity in sync-cli-docs workflow ([748ecd2](https://github.com/KeeperHub/cli/commit/748ecd2ee52a7335f6b669dddf6f1d1f9cb2342b))
+
 ## [0.5.2](https://github.com/KeeperHub/cli/compare/v0.5.1...v0.5.2) (2026-03-16)
 
 
