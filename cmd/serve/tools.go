@@ -359,7 +359,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	// workflow_delete -- DELETE /api/workflows/{id}
 	server.AddTool(&mcp.Tool{
 		Name:        "workflow_delete",
-		Description: "Delete a workflow by ID",
+		Description: "Delete a workflow by ID. Use force=true to delete workflows that have execution history.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -367,11 +367,19 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 					"type":        "string",
 					"description": "The workflow ID to delete",
 				},
+				"force": map[string]any{
+					"type":        "boolean",
+					"description": "Force delete even if the workflow has execution history. This will permanently delete all runs and logs.",
+				},
 			},
 			"required": []string{"workflow_id"},
 		},
 	}, makeStaticHandler(f, http.MethodDelete, func(args map[string]any, baseURL string) string {
-		return baseURL + "/api/workflows/" + getStringArg(args, "workflow_id")
+		u := baseURL + "/api/workflows/" + getStringArg(args, "workflow_id")
+		if force, ok := args["force"]; ok && force == true {
+			u += "?force=true"
+		}
+		return u
 	}, nil))
 
 	// workflow_execute -- POST /api/workflow/{id}/execute
