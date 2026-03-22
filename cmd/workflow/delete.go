@@ -24,17 +24,22 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
   kh wf delete abc123
 
   # Delete without prompting
-  kh wf delete abc123 --yes`,
+  kh wf delete abc123 --yes
+
+  # Force delete a workflow that has execution history
+  kh wf delete abc123 --force`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workflowID := args[0]
 
-			yes, err := cmd.Flags().GetBool("yes")
-			if err != nil {
-				yes = false
-			}
+			force, _ := cmd.Flags().GetBool("force")
+			yes, _ := cmd.Flags().GetBool("yes")
 
 			if !yes && f.IOStreams.IsTerminal() {
-				fmt.Fprintf(f.IOStreams.Out, "Delete workflow %s? This cannot be undone. (y/N) ", workflowID)
+				prompt := fmt.Sprintf("Delete workflow %s? This cannot be undone. (y/N) ", workflowID)
+				if force {
+					prompt = fmt.Sprintf("Force delete workflow %s and all its execution history? This cannot be undone. (y/N) ", workflowID)
+				}
+				fmt.Fprint(f.IOStreams.Out, prompt)
 				scanner := bufio.NewScanner(f.IOStreams.In)
 				if scanner.Scan() {
 					answer := strings.TrimSpace(strings.ToLower(scanner.Text()))
@@ -55,6 +60,9 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 			host := cmdutil.ResolveHost(cmd, cfg)
 
 			url := khhttp.BuildBaseURL(host) + "/api/workflows/" + workflowID
+			if force {
+				url += "?force=true"
+			}
 			req, err := client.NewRequest(http.MethodDelete, url, nil)
 			if err != nil {
 				return err
@@ -62,15 +70,16 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 
 			resp, err := client.Do(req)
 			if err != nil {
-				return fmt.Errorf("cannot delete workflow %s: it may have existing runs that prevent deletion", workflowID)
+				return fmt.Errorf("cannot delete workflow %s: %w", workflowID, err)
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusNotFound {
 				return cmdutil.NotFoundError{Err: fmt.Errorf("workflow %q not found", workflowID)}
 			}
-			if resp.StatusCode == http.StatusInternalServerError {
-				return fmt.Errorf("cannot delete workflow %s: workflow has existing runs that prevent deletion", workflowID)
+			if resp.StatusCode == http.StatusConflict && !force {
+				fmt.Fprintf(f.IOStreams.ErrOut, "Workflow has execution history. Use --force to delete the workflow and all its runs.\n")
+				return fmt.Errorf("workflow %s has existing runs that prevent deletion", workflowID)
 			}
 			if resp.StatusCode != http.StatusOK {
 				return khhttp.NewAPIError(resp)
@@ -90,6 +99,7 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt")
+	cmd.Flags().Bool("force", false, "Force delete even if workflow has execution history")
 
 	return cmd
 }
