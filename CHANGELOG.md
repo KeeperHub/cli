@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0](https://github.com/KeeperHub/cli/compare/v0.5.3...v0.6.0) (2026-03-23)
+
+
+### Features
+
+* add --force flag to workflow delete command ([746840a](https://github.com/KeeperHub/cli/commit/746840a902b75232004949038d539ed76e6dda39))
+* add --force flag to workflow delete command ([7da2051](https://github.com/KeeperHub/cli/commit/7da20510d74fc1c104502fbacb7901f898a4655c))
+* add .deb and .rpm package support for Linux ([7714e74](https://github.com/KeeperHub/cli/commit/7714e74ee346068c938fc0d7b9ab9face7218487))
+
 ## [0.5.3](https://github.com/KeeperHub/cli/compare/v0.5.2...v0.5.3) (2026-03-16)
 
 
