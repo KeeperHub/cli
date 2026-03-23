@@ -25,6 +25,23 @@ archives:
         format: zip
     files:
       - completions/*
+nfpms:
+  - id: kh
+    package_name: kh
+    vendor: KeeperHub
+    homepage: "https://github.com/keeperhub/cli"
+    description: "KeeperHub CLI -- manage workflows, executions, and Web3 automation"
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    contents:
+      - src: completions/kh.bash
+        dst: /usr/share/bash-completion/completions/kh
+      - src: completions/kh.zsh
+        dst: /usr/share/zsh/vendor-completions/_kh
+      - src: completions/kh.fish
+        dst: /usr/share/fish/vendor_completions.d/kh.fish
 checksum:
   name_template: checksums.txt
 homebrew_casks:
