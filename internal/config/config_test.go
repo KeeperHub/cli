@@ -88,3 +88,70 @@ func TestConfigDirUsesXDG(t *testing.T) {
 		t.Errorf("ConfigDir: got %q, want %q", got, want)
 	}
 }
+
+func TestRPCEndpoint_Found(t *testing.T) {
+	cfg := config.Config{
+		RPC: map[string]string{
+			"1":   "https://eth-mainnet.example.com",
+			"137": "https://polygon.example.com",
+		},
+	}
+	got := cfg.RPCEndpoint("1")
+	if got != "https://eth-mainnet.example.com" {
+		t.Errorf("RPCEndpoint(1): got %q, want %q", got, "https://eth-mainnet.example.com")
+	}
+}
+
+func TestRPCEndpoint_NotFound(t *testing.T) {
+	cfg := config.Config{
+		RPC: map[string]string{
+			"1": "https://eth-mainnet.example.com",
+		},
+	}
+	got := cfg.RPCEndpoint("999")
+	if got != "" {
+		t.Errorf("RPCEndpoint(999): got %q, want empty string", got)
+	}
+}
+
+func TestRPCEndpoint_NilMap(t *testing.T) {
+	cfg := config.Config{}
+	got := cfg.RPCEndpoint("1")
+	if got != "" {
+		t.Errorf("RPCEndpoint(1) with nil map: got %q, want empty string", got)
+	}
+}
+
+func TestWriteReadConfigRoundTripWithRPC(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	want := config.Config{
+		ConfigVersion: "1",
+		DefaultHost:   "app.keeperhub.com",
+		DefaultOrg:    "org_test123",
+		RPC: map[string]string{
+			"1":   "https://eth.example.com",
+			"137": "https://polygon.example.com",
+		},
+	}
+
+	if err := config.WriteConfig(want); err != nil {
+		t.Fatalf("WriteConfig: %v", err)
+	}
+
+	got, err := config.ReadConfig()
+	if err != nil {
+		t.Fatalf("ReadConfig: %v", err)
+	}
+
+	if got.DefaultOrg != want.DefaultOrg {
+		t.Errorf("DefaultOrg: got %q, want %q", got.DefaultOrg, want.DefaultOrg)
+	}
+	if got.RPCEndpoint("1") != "https://eth.example.com" {
+		t.Errorf("RPCEndpoint(1): got %q, want %q", got.RPCEndpoint("1"), "https://eth.example.com")
+	}
+	if got.RPCEndpoint("137") != "https://polygon.example.com" {
+		t.Errorf("RPCEndpoint(137): got %q, want %q", got.RPCEndpoint("137"), "https://polygon.example.com")
+	}
+}

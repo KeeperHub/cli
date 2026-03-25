@@ -49,9 +49,9 @@ func TestGetCmd(t *testing.T) {
 	require.NoError(t, err)
 
 	out := outBuf.String()
-	assert.Contains(t, out, "Aave", "expected protocol name in output")
-	assert.Contains(t, out, "supply", "expected action name in output")
-	assert.Contains(t, out, "amount", "expected field name in output")
+	assert.Contains(t, out, "aave", "expected protocol name in output")
+	assert.Contains(t, out, "aave/supply", "expected action type in output")
+	assert.Contains(t, out, "Supply", "expected action label in output")
 }
 
 func TestGetCmd_NotFound(t *testing.T) {

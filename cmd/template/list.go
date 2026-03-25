@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	khhttp "github.com/keeperhub/cli/internal/http"
@@ -44,17 +45,28 @@ func categoryFromTags(tags []PublicTag) string {
 }
 
 func NewListCmd(f *cmdutil.Factory) *cobra.Command {
+	var query string
+
 	cmd := &cobra.Command{
-		Use:     "list",
+		Use:     "list [query]",
 		Short:   "List workflow templates",
-		Aliases: []string{"ls"},
-		Args:    cobra.NoArgs,
+		Aliases: []string{"ls", "search"},
+		Args:    cobra.MaximumNArgs(1),
 		Example: `  # List featured templates
   kh tp ls
+
+  # Search templates by keyword
+  kh tp ls defi
+  kh tp ls --query monitor
 
   # List templates as JSON
   kh tp ls --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Positional arg takes precedence over --query flag
+			if len(args) > 0 {
+				query = args[0]
+			}
+
 			client, err := f.HTTPClient()
 			if err != nil {
 				return fmt.Errorf("creating HTTP client: %w", err)
@@ -88,6 +100,10 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("decoding response: %w", err)
 			}
 
+			if query != "" {
+				templates = filterTemplates(templates, query)
+			}
+
 			p := output.NewPrinter(f.IOStreams, cmd)
 			if len(templates) == 0 && !p.IsJSON() {
 				fmt.Fprintln(f.IOStreams.Out, "No templates found.")
@@ -107,5 +123,21 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVarP(&query, "query", "q", "", "Filter templates by name or description")
+
 	return cmd
+}
+
+// filterTemplates returns templates whose name or description contains the query
+// (case-insensitive substring match).
+func filterTemplates(templates []Template, query string) []Template {
+	q := strings.ToLower(query)
+	var result []Template
+	for _, tpl := range templates {
+		if strings.Contains(strings.ToLower(tpl.Name), q) ||
+			strings.Contains(strings.ToLower(tpl.Description), q) {
+			result = append(result, tpl)
+		}
+	}
+	return result
 }

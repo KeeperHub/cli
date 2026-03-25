@@ -34,37 +34,27 @@ func makeSchemasServer(t *testing.T, handler http.HandlerFunc) *httptest.Server 
 
 func sampleSchemasResponse() map[string]interface{} {
 	return map[string]interface{}{
-		"plugins": []interface{}{
-			map[string]interface{}{
-				"name":        "Aave",
-				"slug":        "aave",
-				"description": "Aave lending protocol",
-				"actions": []interface{}{
-					map[string]interface{}{
-						"name":        "supply",
-						"description": "Supply assets",
-						"fields": []interface{}{
-							map[string]interface{}{"name": "amount", "type": "string", "required": true, "description": "Amount to supply"},
-						},
-					},
-					map[string]interface{}{
-						"name":        "borrow",
-						"description": "Borrow assets",
-						"fields":      []interface{}{},
-					},
-				},
+		"actions": map[string]interface{}{
+			"aave/supply": map[string]interface{}{
+				"actionType":  "aave/supply",
+				"label":       "Aave: Supply",
+				"description": "Supply assets",
+				"category":    "Aave",
+				"integration": "aave",
 			},
-			map[string]interface{}{
-				"name":        "Uniswap",
-				"slug":        "uniswap",
-				"description": "Uniswap DEX",
-				"actions": []interface{}{
-					map[string]interface{}{
-						"name":        "swap",
-						"description": "Swap tokens",
-						"fields":      []interface{}{},
-					},
-				},
+			"aave/borrow": map[string]interface{}{
+				"actionType":  "aave/borrow",
+				"label":       "Aave: Borrow",
+				"description": "Borrow assets",
+				"category":    "Aave",
+				"integration": "aave",
+			},
+			"uniswap/swap": map[string]interface{}{
+				"actionType":  "uniswap/swap",
+				"label":       "Uniswap: Swap",
+				"description": "Swap tokens",
+				"category":    "Uniswap",
+				"integration": "uniswap",
 			},
 		},
 	}
@@ -95,8 +85,8 @@ func TestListCmd_CacheMiss(t *testing.T) {
 
 	assert.True(t, called, "expected GET /api/mcp/schemas to be called on cache miss")
 	out := outBuf.String()
-	assert.Contains(t, out, "Aave")
-	assert.Contains(t, out, "Uniswap")
+	assert.Contains(t, out, "aave")
+	assert.Contains(t, out, "uniswap")
 }
 
 func TestListCmd_CacheHit(t *testing.T) {
@@ -123,7 +113,7 @@ func TestListCmd_CacheHit(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.False(t, networkCalled, "expected no network request on cache hit")
-	assert.Contains(t, outBuf.String(), "Aave")
+	assert.Contains(t, outBuf.String(), "aave")
 }
 
 func TestListCmd_Refresh(t *testing.T) {
@@ -183,7 +173,7 @@ func TestListCmd_StaleWithError(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err, "stale cache with error should not return error")
 
-	assert.Contains(t, outBuf.String(), "Aave", "expected stale data to be served")
+	assert.Contains(t, outBuf.String(), "aave", "expected stale data to be served")
 	assert.Contains(t, errBuf.String(), "Warning", "expected warning on stderr")
 }
 
@@ -229,9 +219,9 @@ func TestListCmd_Table(t *testing.T) {
 	out := outBuf.String()
 	// Test streams are non-TTY, so tsvWriter outputs data rows without headers.
 	// Verify protocol names and action counts are present.
-	assert.Contains(t, out, "Aave")
+	assert.Contains(t, out, "aave")
 	assert.Contains(t, out, "2")
-	assert.Contains(t, out, "Uniswap")
+	assert.Contains(t, out, "uniswap")
 	assert.Contains(t, out, "1")
 }
 

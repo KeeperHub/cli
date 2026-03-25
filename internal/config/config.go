@@ -11,8 +11,21 @@ import (
 
 // Config holds the top-level application configuration stored in config.yml.
 type Config struct {
-	ConfigVersion string `yaml:"config_version"`
-	DefaultHost   string `yaml:"default_host,omitempty"`
+	ConfigVersion string            `yaml:"config_version"`
+	DefaultHost   string            `yaml:"default_host,omitempty"`
+	DefaultOrg    string            `yaml:"default_org,omitempty"`
+	RPC           map[string]string `yaml:"rpc,omitempty"`
+}
+
+// RPCEndpoint returns the user-configured RPC URL for the given chain ID,
+// or an empty string if none is configured.
+func (c Config) RPCEndpoint(chainID string) string {
+	if c.RPC != nil {
+		if url, ok := c.RPC[chainID]; ok {
+			return url
+		}
+	}
+	return ""
 }
 
 // DefaultConfig returns a Config with built-in defaults applied.

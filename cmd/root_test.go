@@ -132,11 +132,11 @@ func TestRootCmdParsesHostFlag(t *testing.T) {
 	assert.Equal(t, "app-staging.keeperhub.com", hostVal)
 }
 
-func TestRootCmdHas21Subcommands(t *testing.T) {
+func TestRootCmdHas23Subcommands(t *testing.T) {
 	f := newTestFactory()
 	root := cmd.NewRootCmd(f)
 	cmds := root.Commands()
-	assert.Equal(t, 21, len(cmds), "expected 21 subcommands registered on root (18 commands + 3 help topics)")
+	assert.Equal(t, 23, len(cmds), "expected 23 subcommands registered on root (20 commands + 3 help topics)")
 }
 
 func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
@@ -152,9 +152,10 @@ func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
 	helpOutput := buf.String()
 	expectedCommands := []string{
 		"workflow", "run", "execute", "project",
-		"tag", "org", "action", "protocol",
+		"tag", "org", "action", "plugin",
 		"wallet", "template", "billing", "doctor",
 		"version", "auth", "config", "completion", "update",
+		"chain", "read",
 	}
 	for _, cmdName := range expectedCommands {
 		assert.True(t, strings.Contains(helpOutput, cmdName),
@@ -178,7 +179,7 @@ func TestRootCmdHelpDoesNotIncludeAPIKey(t *testing.T) {
 }
 
 func TestAllNounAliasesResolve(t *testing.T) {
-	aliases := []string{"wf", "r", "ex", "p", "t", "o", "a", "pr", "w", "tp", "b", "doc", "v"}
+	aliases := []string{"wf", "r", "ex", "p", "t", "o", "a", "pr", "w", "tp", "b", "doc", "v", "ch", "call"}
 
 	for _, alias := range aliases {
 		t.Run(alias, func(t *testing.T) {
