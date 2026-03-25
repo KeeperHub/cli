@@ -38,9 +38,9 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return nil
 			}
 			return p.PrintData(chains, func(tw table.Writer) {
-				tw.AppendHeader(table.Row{"CHAIN ID", "NAME", "TYPE", "STATUS"})
+				tw.AppendHeader(table.Row{"CHAIN ID", "NAME", "TYPE", "ENABLED"})
 				for _, ch := range chains {
-					tw.AppendRow(table.Row{ch.ChainID, ch.Name, ch.Type, ch.Status})
+					tw.AppendRow(table.Row{ch.ChainID, ch.Name, ch.Type, ch.IsEnabled})
 				}
 				tw.Render()
 			})

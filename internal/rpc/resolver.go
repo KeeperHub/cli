@@ -22,10 +22,10 @@ const (
 type ChainInfo struct {
 	ChainID        int    `json:"chainId"`
 	Name           string `json:"name"`
-	Type           string `json:"type"`
-	Status         string `json:"status"`
-	PrimaryRpcURL  string `json:"primaryRpcUrl"`
-	FallbackRpcURL string `json:"fallbackRpcUrl"`
+	Type           string `json:"chainType"`
+	IsEnabled      bool   `json:"isEnabled"`
+	PrimaryRpcURL  string `json:"defaultPrimaryRpc"`
+	FallbackRpcURL string `json:"defaultFallbackRpc"`
 }
 
 // Resolve returns the RPC endpoint URL for a given chain ID.

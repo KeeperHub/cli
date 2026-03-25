@@ -13,9 +13,9 @@ import (
 
 func sampleChains() []rpc.ChainInfo {
 	return []rpc.ChainInfo{
-		{ChainID: 1, Name: "Ethereum", Type: "mainnet", Status: "active", PrimaryRpcURL: "https://eth-rpc.example.com", FallbackRpcURL: "https://eth-fallback.example.com"},
-		{ChainID: 137, Name: "Polygon", Type: "mainnet", Status: "active", PrimaryRpcURL: "", FallbackRpcURL: "https://polygon-fallback.example.com"},
-		{ChainID: 42161, Name: "Arbitrum", Type: "mainnet", Status: "active", PrimaryRpcURL: "", FallbackRpcURL: ""},
+		{ChainID: 1, Name: "Ethereum", Type: "evm", IsEnabled: true, PrimaryRpcURL: "https://eth-rpc.example.com", FallbackRpcURL: "https://eth-fallback.example.com"},
+		{ChainID: 137, Name: "Polygon", Type: "evm", IsEnabled: true, PrimaryRpcURL: "", FallbackRpcURL: "https://polygon-fallback.example.com"},
+		{ChainID: 42161, Name: "Arbitrum", Type: "evm", IsEnabled: true, PrimaryRpcURL: "", FallbackRpcURL: ""},
 	}
 }
 
