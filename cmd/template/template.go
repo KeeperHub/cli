@@ -9,7 +9,7 @@ func NewTemplateCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "template",
 		Short:   "Manage workflow templates",
-		Aliases: []string{"tp"},
+		Aliases: []string{"tp", "tpl"},
 		Example: `  # List available templates
   kh tp ls
 

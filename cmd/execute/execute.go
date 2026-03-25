@@ -9,7 +9,7 @@ func NewExecuteCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "execute",
 		Short:   "Execute direct blockchain actions",
-		Aliases: []string{"ex"},
+		Aliases: []string{"ex", "exec"},
 		Long: `Execute blockchain operations directly without building a full workflow.
 Supports token transfers and smart contract calls. Returns execution IDs
 immediately; use --wait to block until completion.

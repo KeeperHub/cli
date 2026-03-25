@@ -178,7 +178,7 @@ func TestRootCmdHelpDoesNotIncludeAPIKey(t *testing.T) {
 }
 
 func TestAllNounAliasesResolve(t *testing.T) {
-	aliases := []string{"wf", "r", "ex", "p", "t", "o", "a", "pr", "w", "tp", "b", "doc", "v"}
+	aliases := []string{"wf", "r", "ex", "exec", "p", "t", "o", "a", "pr", "proto", "w", "tp", "tpl", "b", "doc", "v"}
 
 	for _, alias := range aliases {
 		t.Run(alias, func(t *testing.T) {

@@ -39,7 +39,7 @@ func NewRunCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "run <workflow-id>",
 		Short:   "Run a workflow",
-		Aliases: []string{"r"},
+		Aliases: []string{"r", "exec"},
 		Args:    cobra.ExactArgs(1),
 		Long: `Run triggers a workflow execution. By default the command returns the
 execution ID immediately. Use --wait to block until the run completes
