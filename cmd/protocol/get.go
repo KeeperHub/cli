@@ -1,89 +1,139 @@
 package protocol
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/keeperhub/cli/internal/cache"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
+// ProtocolDetail holds a protocol name and its actions for the get command.
+type ProtocolDetail struct {
+	Name    string         `json:"name"`
+	Actions []ActionDetail `json:"actions"`
+}
+
+// ActionDetail holds a single action's metadata for display.
+type ActionDetail struct {
+	ActionType  string            `json:"actionType"`
+	Label       string            `json:"label"`
+	Description string            `json:"description"`
+	Fields      map[string]string `json:"requiredFields,omitempty"`
+}
+
 func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "get <protocol-slug>",
-		Short:   "Get a protocol",
+		Use:     "get <protocol-name>",
+		Short:   "Get protocol details and actions",
 		Aliases: []string{"g"},
 		Args:    cobra.ExactArgs(1),
 		Example: `  # Get protocol reference card
-  kh pr g uniswap
+  kh pr g aave
 
   # Get protocol details as JSON
-  kh pr g aave --json`,
+  kh pr g morpho --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			slug := args[0]
+			name := strings.ToLower(args[0])
+			refresh, _ := cmd.Flags().GetBool("refresh")
 
-			protocols, err := loadProtocols(f, false, cmd)
+			detail, err := loadProtocolDetail(f, name, refresh, cmd)
 			if err != nil {
 				return err
 			}
 
-			var found *Protocol
-			for i := range protocols {
-				if protocols[i].Slug == slug {
-					found = &protocols[i]
-					break
-				}
-			}
-
-			if found == nil {
-				return cmdutil.NotFoundError{Err: fmt.Errorf("protocol %q not found", slug)}
+			if detail == nil {
+				return cmdutil.NotFoundError{Err: fmt.Errorf("protocol %q not found", name)}
 			}
 
 			p := output.NewPrinter(f.IOStreams, cmd)
-			return p.PrintData(found, func(_ table.Writer) {
-				renderProtocolDetail(f, found)
+			return p.PrintData(detail, func(_ table.Writer) {
+				renderProtocolDetail(f, detail)
 			})
 		},
 	}
 
+	cmd.Flags().Bool("refresh", false, "Bypass local cache and fetch fresh data")
+
 	return cmd
 }
 
-// renderProtocolDetail writes a full reference card for the protocol to stdout.
-func renderProtocolDetail(f *cmdutil.Factory, proto *Protocol) {
-	fmt.Fprintf(f.IOStreams.Out, "%s\n", proto.Name)
-	if proto.Description != "" {
-		fmt.Fprintf(f.IOStreams.Out, "%s\n", proto.Description)
-	}
-	fmt.Fprintln(f.IOStreams.Out)
+// loadProtocolDetail extracts actions for a specific integration from the schemas cache.
+func loadProtocolDetail(f *cmdutil.Factory, name string, refresh bool, cmd *cobra.Command) (*ProtocolDetail, error) {
+	var raw []byte
 
-	for _, action := range proto.Actions {
-		fmt.Fprintf(f.IOStreams.Out, "  %s\n", action.Name)
+	if !refresh {
+		entry, err := cache.ReadCache(cache.ProtocolCacheName)
+		if err == nil && !cache.IsStale(entry, cache.ProtocolCacheTTL) {
+			raw = entry.Data
+		}
+	}
+
+	if raw == nil {
+		fetched, err := fetchSchemas(f, cmd)
+		if err != nil {
+			entry, cacheErr := cache.ReadCache(cache.ProtocolCacheName)
+			if cacheErr != nil {
+				return nil, fmt.Errorf("could not fetch protocols: %w", err)
+			}
+			raw = entry.Data
+		} else {
+			raw = fetched
+			_ = cache.WriteCache(cache.ProtocolCacheName, fetched)
+		}
+	}
+
+	var schemas SchemasResponse
+	if err := unmarshalSchemasRaw(raw, &schemas); err != nil {
+		return nil, err
+	}
+
+	var actions []ActionDetail
+	for _, action := range schemas.Actions {
+		integration := strings.ToLower(action.Integration)
+		if integration == "" {
+			integration = strings.ToLower(action.Category)
+		}
+		if integration != name {
+			continue
+		}
+		actions = append(actions, ActionDetail{
+			ActionType:  action.ActionType,
+			Label:       action.Label,
+			Description: action.Description,
+		})
+	}
+
+	if len(actions) == 0 {
+		return nil, nil
+	}
+
+	sort.Slice(actions, func(i, j int) bool {
+		return actions[i].ActionType < actions[j].ActionType
+	})
+
+	return &ProtocolDetail{Name: name, Actions: actions}, nil
+}
+
+func unmarshalSchemasRaw(raw []byte, out *SchemasResponse) error {
+	return json.Unmarshal(raw, out)
+}
+
+// renderProtocolDetail writes a reference card for the protocol to stdout.
+func renderProtocolDetail(f *cmdutil.Factory, detail *ProtocolDetail) {
+	fmt.Fprintf(f.IOStreams.Out, "%s (%d actions)\n\n", detail.Name, len(detail.Actions))
+
+	for _, action := range detail.Actions {
+		fmt.Fprintf(f.IOStreams.Out, "  %s\n", action.Label)
+		fmt.Fprintf(f.IOStreams.Out, "    %s\n", action.ActionType)
 		if action.Description != "" {
 			fmt.Fprintf(f.IOStreams.Out, "    %s\n", action.Description)
 		}
-
-		if len(action.Fields) > 0 {
-			fmt.Fprintln(f.IOStreams.Out)
-			printFieldsTable(f, action.Fields)
-		}
 		fmt.Fprintln(f.IOStreams.Out)
 	}
-}
-
-// printFieldsTable renders an action's fields as a compact table.
-func printFieldsTable(f *cmdutil.Factory, fields []Field) {
-	tw := output.NewTable(f.IOStreams.Out, false)
-	tw.AppendHeader(table.Row{"NAME", "TYPE", "REQUIRED", "DESCRIPTION"})
-	for _, field := range fields {
-		req := "no"
-		if field.Required {
-			req = "yes"
-		}
-		desc := strings.TrimSpace(field.Description)
-		tw.AppendRow(table.Row{field.Name, field.Type, req, desc})
-	}
-	tw.Render()
 }
