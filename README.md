@@ -38,11 +38,15 @@ kh protocol list                   # Browse available protocols
 
 ## MCP Server Mode
 
+The recommended way to connect AI assistants to KeeperHub is the remote HTTP endpoint:
+
 ```
-kh serve --mcp
+claude mcp add --transport http keeperhub https://app.keeperhub.com/mcp
 ```
 
-Starts an MCP server that exposes KeeperHub actions as tools to AI assistants such as Claude Desktop. See [docs/quickstart.md](docs/quickstart.md) for setup instructions.
+No local server process required. See [docs/quickstart.md](docs/quickstart.md) for full setup instructions.
+
+The legacy `kh serve --mcp` stdio mode is still available but deprecated.
 
 ## Documentation
 
