@@ -4,6 +4,7 @@ import (
 	"github.com/keeperhub/cli/cmd/action"
 	"github.com/keeperhub/cli/cmd/auth"
 	"github.com/keeperhub/cli/cmd/billing"
+	"github.com/keeperhub/cli/cmd/chain"
 	"github.com/keeperhub/cli/cmd/completion"
 	"github.com/keeperhub/cli/cmd/config"
 	"github.com/keeperhub/cli/cmd/doctor"
@@ -12,6 +13,7 @@ import (
 	"github.com/keeperhub/cli/cmd/org"
 	"github.com/keeperhub/cli/cmd/project"
 	"github.com/keeperhub/cli/cmd/protocol"
+	"github.com/keeperhub/cli/cmd/read"
 	"github.com/keeperhub/cli/cmd/run"
 	"github.com/keeperhub/cli/cmd/serve"
 	"github.com/keeperhub/cli/cmd/tag"
@@ -44,6 +46,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(action.NewActionCmd(f))
 	cmd.AddCommand(auth.NewAuthCmd(f))
 	cmd.AddCommand(billing.NewBillingCmd(f))
+	cmd.AddCommand(chain.NewChainCmd(f))
 	cmd.AddCommand(completion.NewCompletionCmd())
 	cmd.AddCommand(config.NewConfigCmd(f))
 	cmd.AddCommand(doctor.NewDoctorCmd(f))
@@ -51,6 +54,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(org.NewOrgCmd(f))
 	cmd.AddCommand(project.NewProjectCmd(f))
 	cmd.AddCommand(protocol.NewProtocolCmd(f))
+	cmd.AddCommand(read.NewReadCmd(f))
 	cmd.AddCommand(run.NewRunCmd(f))
 	cmd.AddCommand(serve.NewServeCmd(f))
 	cmd.AddCommand(tag.NewTagCmd(f))

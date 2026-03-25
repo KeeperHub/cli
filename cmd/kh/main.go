@@ -68,13 +68,19 @@ func main() {
 
 			hosts, err := config.ReadHosts()
 			if err != nil {
-				return nil, err
+				// If hosts.yml is unreadable, fall back to an unauthenticated
+				// client so public endpoints (chains, protocols, templates) work
+				// on a fresh install without login.
+				hosts = config.HostsConfig{}
 			}
 
-			// Resolve token using the auth chain: KH_API_KEY > keyring > hosts.yml
+			// Resolve token using the auth chain: KH_API_KEY > keyring > hosts.yml.
+			// If resolution fails (e.g. keyring unavailable on fresh install),
+			// proceed with an empty token; the HTTP client already skips the
+			// Authorization header when token is empty.
 			resolved, err := auth.ResolveToken(activeHost)
 			if err != nil {
-				return nil, err
+				resolved = auth.ResolvedToken{Token: "", Host: activeHost}
 			}
 
 			entry, _ := hosts.HostEntry(activeHost)
