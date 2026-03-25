@@ -24,7 +24,8 @@ All diagnostic output (warnings, errors) is written to stderr. Only
 valid JSON-RPC 2.0 messages appear on stdout.`,
 		Example: `  # Start an MCP stdio server (for use with Claude, Cursor, etc.)
   kh serve --mcp`,
-		Args: cobra.NoArgs,
+		Deprecated: "Use the remote MCP endpoint instead: claude mcp add --transport http keeperhub https://app.keeperhub.com/mcp",
+		Args:       cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			isMCP, err := cmd.Flags().GetBool("mcp")
 			if err != nil {

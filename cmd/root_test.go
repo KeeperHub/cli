@@ -154,7 +154,7 @@ func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
 		"workflow", "run", "execute", "project",
 		"tag", "org", "action", "protocol",
 		"wallet", "template", "billing", "doctor",
-		"version", "auth", "config", "serve", "completion", "update",
+		"version", "auth", "config", "completion", "update",
 	}
 	for _, cmdName := range expectedCommands {
 		assert.True(t, strings.Contains(helpOutput, cmdName),
