@@ -35,6 +35,11 @@ func BuildInputSchema(action ActionSchema) map[string]any {
 		}
 	}
 
+	properties["organizationId"] = map[string]any{
+		"type":        "string",
+		"description": "Organization ID to use (overrides default from auth)",
+	}
+
 	return map[string]any{
 		"type":       "object",
 		"properties": properties,
@@ -77,6 +82,12 @@ func MakeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
 				return nil, fmt.Errorf("unmarshaling arguments: %w", err)
 			}
 		}
+		if args == nil {
+			args = make(map[string]any)
+		}
+
+		orgID := getStringArg(args, "organizationId")
+		delete(args, "organizationId")
 
 		bodyBytes, err := json.Marshal(args)
 		if err != nil {
@@ -94,6 +105,10 @@ func MakeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
 			return nil, fmt.Errorf("building request: %w", err)
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
+
+		if orgID != "" {
+			httpReq.Header.Set("X-Organization-Id", orgID)
+		}
 
 		resp, err := client.Do(httpReq)
 		if err != nil {
@@ -177,6 +192,10 @@ func makeStaticHandler(
 			httpReq.Header.Set("Content-Type", "application/json")
 		}
 
+		if orgID := getStringArg(args, "organizationId"); orgID != "" {
+			httpReq.Header.Set("X-Organization-Id", orgID)
+		}
+
 		resp, err := client.Do(httpReq)
 		if err != nil {
 			return nil, fmt.Errorf("executing request: %w", err)
@@ -205,6 +224,23 @@ func makeStaticHandler(
 	}
 }
 
+// orgProperty is the JSON Schema fragment for the optional organizationId field
+// shared by all MCP tools.
+var orgProperty = map[string]any{
+	"type":        "string",
+	"description": "Organization ID to use (overrides default from auth)",
+}
+
+// withOrgField returns a copy of the input schema with the organizationId
+// optional property added to its properties map.
+func withOrgField(schema map[string]any) map[string]any {
+	props, ok := schema["properties"].(map[string]any)
+	if ok {
+		props["organizationId"] = orgProperty
+	}
+	return schema
+}
+
 // registerStaticTools registers workflow management and execution tools that
 // call KeeperHub API endpoints directly (not via /api/execute/).
 func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
@@ -212,7 +248,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "workflow_list",
 		Description: "List all workflows in the current organization",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"limit": map[string]any{
@@ -220,7 +256,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 					"description": "Maximum number of workflows to return",
 				},
 			},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodGet, func(args map[string]any, baseURL string) string {
 		u := baseURL + "/api/workflows"
 		if limit := getStringArg(args, "limit"); limit != "" {
@@ -233,7 +269,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "workflow_get",
 		Description: "Get a workflow by ID, including its nodes and edges",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"workflow_id": map[string]any{
@@ -242,7 +278,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 				},
 			},
 			"required": []string{"workflow_id"},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodGet, func(args map[string]any, baseURL string) string {
 		return baseURL + "/api/workflows/" + getStringArg(args, "workflow_id")
 	}, nil))
@@ -251,7 +287,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "workflow_create",
 		Description: "Create a new workflow",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"name": map[string]any{
@@ -272,7 +308,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 				},
 			},
 			"required": []string{"name"},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodPost, func(args map[string]any, baseURL string) string {
 		return baseURL + "/api/workflows/create"
 	}, func(args map[string]any) ([]byte, error) {
@@ -303,7 +339,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "workflow_update",
 		Description: "Update an existing workflow",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"workflow_id": map[string]any{
@@ -328,7 +364,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 				},
 			},
 			"required": []string{"workflow_id"},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodPatch, func(args map[string]any, baseURL string) string {
 		return baseURL + "/api/workflows/" + getStringArg(args, "workflow_id")
 	}, func(args map[string]any) ([]byte, error) {
@@ -360,7 +396,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "workflow_delete",
 		Description: "Delete a workflow by ID. Use force=true to delete workflows that have execution history.",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"workflow_id": map[string]any{
@@ -373,7 +409,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 				},
 			},
 			"required": []string{"workflow_id"},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodDelete, func(args map[string]any, baseURL string) string {
 		u := baseURL + "/api/workflows/" + getStringArg(args, "workflow_id")
 		if force, ok := args["force"]; ok && force == true {
@@ -386,7 +422,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "workflow_execute",
 		Description: "Execute a workflow by ID",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"workflow_id": map[string]any{
@@ -399,7 +435,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 				},
 			},
 			"required": []string{"workflow_id"},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodPost, func(args map[string]any, baseURL string) string {
 		return baseURL + "/api/workflow/" + getStringArg(args, "workflow_id") + "/execute"
 	}, func(args map[string]any) ([]byte, error) {
@@ -417,7 +453,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "execution_status",
 		Description: "Get the status of a workflow execution",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"execution_id": map[string]any{
@@ -426,7 +462,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 				},
 			},
 			"required": []string{"execution_id"},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodGet, func(args map[string]any, baseURL string) string {
 		return baseURL + "/api/workflows/executions/" + getStringArg(args, "execution_id") + "/status"
 	}, nil))
@@ -435,7 +471,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 	server.AddTool(&mcp.Tool{
 		Name:        "execution_logs",
 		Description: "Get the logs for a workflow execution",
-		InputSchema: map[string]any{
+		InputSchema: withOrgField(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"execution_id": map[string]any{
@@ -444,7 +480,7 @@ func registerStaticTools(server *mcp.Server, f *cmdutil.Factory) {
 				},
 			},
 			"required": []string{"execution_id"},
-		},
+		}),
 	}, makeStaticHandler(f, http.MethodGet, func(args map[string]any, baseURL string) string {
 		return baseURL + "/api/workflows/executions/" + getStringArg(args, "execution_id") + "/logs"
 	}, nil))
