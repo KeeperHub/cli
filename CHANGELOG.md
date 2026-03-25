@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.7.0](https://github.com/KeeperHub/cli/compare/v0.6.0...v0.7.0) (2026-03-25)
+
+
+### Features
+
+* **KEEP-145:** add --org flag for organization override ([bbd5b76](https://github.com/KeeperHub/cli/commit/bbd5b767f600ebafa841a9a3a23adfe8ba2451a9))
+* **KEEP-145:** add --org flag for organization override ([ea1eb98](https://github.com/KeeperHub/cli/commit/ea1eb9839d4f8226588d17e1c22a9cf716f5b827))
+
+
+### Bug Fixes
+
+* strip organizationId from POST body and resolve header ([c6da13b](https://github.com/KeeperHub/cli/commit/c6da13b54571898e2ef894798ee4024347893ec9))
+* update docs sync target from techops-services to KeeperHub org ([6e8d92f](https://github.com/KeeperHub/cli/commit/6e8d92f161747fbbe9971cfc198ae91ac6c18d5d))
+* update docs sync target from techops-services to KeeperHub org ([07741a1](https://github.com/KeeperHub/cli/commit/07741a166b53d91223c9f4e6cefc776734c40a71))
+
 ## [0.6.0](https://github.com/KeeperHub/cli/compare/v0.5.3...v0.6.0) (2026-03-23)
 
 
