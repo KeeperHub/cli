@@ -152,7 +152,7 @@ func TestRootCmdHelpIncludesAllCommands(t *testing.T) {
 	helpOutput := buf.String()
 	expectedCommands := []string{
 		"workflow", "run", "execute", "project",
-		"tag", "org", "action", "protocol",
+		"tag", "org", "action", "plugin",
 		"wallet", "template", "billing", "doctor",
 		"version", "auth", "config", "completion", "update",
 		"chain", "read",

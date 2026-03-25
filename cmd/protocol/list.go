@@ -38,14 +38,14 @@ type Protocol struct {
 func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
-		Short:   "List blockchain protocols and integrations",
+		Short:   "List available plugins and integrations",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
-		Example: `  # List all protocols (cached)
-  kh pr ls
+		Example: `  # List all plugins (cached)
+  kh plugin ls
 
   # Force refresh from API
-  kh pr ls --refresh`,
+  kh plugin ls --refresh`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			refresh, err := cmd.Flags().GetBool("refresh")
 			if err != nil {

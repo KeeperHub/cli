@@ -29,15 +29,15 @@ type ActionDetail struct {
 
 func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "get <protocol-name>",
-		Short:   "Get protocol details and actions",
+		Use:     "get <plugin-name>",
+		Short:   "Get plugin details and available actions",
 		Aliases: []string{"g"},
 		Args:    cobra.ExactArgs(1),
-		Example: `  # Get protocol reference card
-  kh pr g aave
+		Example: `  # Get plugin reference card
+  kh plugin g aave
 
-  # Get protocol details as JSON
-  kh pr g morpho --json`,
+  # Get plugin details as JSON
+  kh plugin g morpho --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := strings.ToLower(args[0])
 			refresh, _ := cmd.Flags().GetBool("refresh")

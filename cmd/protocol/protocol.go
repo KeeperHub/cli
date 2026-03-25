@@ -7,14 +7,14 @@ import (
 
 func NewProtocolCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "protocol",
-		Short:   "Browse blockchain protocols",
-		Aliases: []string{"pr"},
-		Example: `  # List all protocols
-  kh pr ls
+		Use:     "plugin",
+		Short:   "Browse available plugins and integrations",
+		Aliases: []string{"plugins", "protocol", "pr", "proto"},
+		Example: `  # List all plugins
+  kh plugin ls
 
-  # Get details for a protocol
-  kh pr g uniswap`,
+  # Get details for a plugin
+  kh plugin g aave`,
 	}
 
 	cmd.AddCommand(NewListCmd(f))
