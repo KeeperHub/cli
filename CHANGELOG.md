@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0](https://github.com/KeeperHub/cli/compare/v0.7.0...v0.8.0) (2026-03-25)
+
+
+### Features
+
+* **KEEP-143:** add kh read, chain list, and remove auth wall for public commands ([d4abdf9](https://github.com/KeeperHub/cli/commit/d4abdf9d65dd3617dd74f3c288edf8de7ccf73c2))
+* **KEEP-143:** add kh read, kh plugin, kh chain, and remove auth wall ([59ca228](https://github.com/KeeperHub/cli/commit/59ca22808c765c0c43aeaa7b8e19d30b28d69bb8))
+
+
+### Bug Fixes
+
+* match chain API field names (defaultPrimaryRpc, chainType, isEnabled) ([2f54353](https://github.com/KeeperHub/cli/commit/2f543533b6b46517a24cf16eaa0d5fda05682062))
+* parse protocol list from actions map instead of plugins array ([378c41e](https://github.com/KeeperHub/cli/commit/378c41e62cd87c6e78a6ce43c8addbf17162f79e))
+
 ## [0.7.0](https://github.com/KeeperHub/cli/compare/v0.6.0...v0.7.0) (2026-03-25)
 
 
