@@ -25,6 +25,10 @@ type Factory struct {
 	// ResolveHost when a cobra.Command is not available (e.g. MCP serve mode).
 	BaseURL func() string
 
+	// OrgID returns the organization ID override from the --org flag.
+	// Returns an empty string when no override is set.
+	OrgID func() string
+
 	// IOStreams provides the standard input/output streams.
 	IOStreams *iostreams.IOStreams
 }

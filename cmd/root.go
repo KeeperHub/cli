@@ -39,6 +39,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.PersistentFlags().BoolP("yes", "y", false, "Skip confirmation prompts")
 	cmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	cmd.PersistentFlags().StringP("host", "H", "", "KeeperHub host (default: app.keeperhub.com)")
+	cmd.PersistentFlags().String("org", "", "Organization ID to use (overrides default from auth)")
 
 	cmd.AddCommand(action.NewActionCmd(f))
 	cmd.AddCommand(auth.NewAuthCmd(f))

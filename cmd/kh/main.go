@@ -43,9 +43,20 @@ func main() {
 		return hosts.ActiveHost(flagHost, envHost)
 	}
 
+	// resolveOrgFlag returns the --org flag value if set, or empty string.
+	resolveOrgFlag := func() string {
+		if rootCmd != nil {
+			if f := rootCmd.PersistentFlags().Lookup("org"); f != nil {
+				return f.Value.String()
+			}
+		}
+		return ""
+	}
+
 	f := &cmdutil.Factory{
 		AppVersion: version.Version,
 		IOStreams:   ios,
+		OrgID:      resolveOrgFlag,
 		Config: func() (config.Config, error) {
 			return config.ReadConfig()
 		},
@@ -69,11 +80,12 @@ func main() {
 			entry, _ := hosts.HostEntry(activeHost)
 
 			return khhttp.NewClient(khhttp.ClientOptions{
-				Host:       activeHost,
-				Token:      resolved.Token,
-				Headers:    entry.Headers,
-				IOStreams:   ios,
-				AppVersion: version.Version,
+				Host:        activeHost,
+				Token:       resolved.Token,
+				Headers:     entry.Headers,
+				OrgOverride: resolveOrgFlag(),
+				IOStreams:    ios,
+				AppVersion:  version.Version,
 			}), nil
 		},
 	}

@@ -84,6 +84,26 @@ func TestNewRootCmdHasHostFlag(t *testing.T) {
 	assert.Equal(t, "string", flag.Value.Type())
 }
 
+func TestNewRootCmdHasOrgFlag(t *testing.T) {
+	f := newTestFactory()
+	root := cmd.NewRootCmd(f)
+	flag := root.PersistentFlags().Lookup("org")
+	require.NotNil(t, flag)
+	assert.Equal(t, "string", flag.Value.Type())
+}
+
+func TestRootCmdParsesOrgFlag(t *testing.T) {
+	f := newTestFactory()
+	root := cmd.NewRootCmd(f)
+	root.SetArgs([]string{"--org", "org_abc123", "--help"})
+	err := root.Execute()
+	assert.NoError(t, err)
+
+	orgVal, err := root.PersistentFlags().GetString("org")
+	require.NoError(t, err)
+	assert.Equal(t, "org_abc123", orgVal)
+}
+
 func TestHostFlagHasShorthandH(t *testing.T) {
 	f := newTestFactory()
 	root := cmd.NewRootCmd(f)

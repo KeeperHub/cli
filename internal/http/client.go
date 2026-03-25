@@ -22,6 +22,10 @@ type ClientOptions struct {
 	// (e.g. Cloudflare Access headers loaded from hosts.yml).
 	Headers map[string]string
 
+	// OrgOverride is the organization ID from the --org flag.
+	// When non-empty, X-Organization-Id is sent on every request.
+	OrgOverride string
+
 	// IOStreams provides the ErrOut writer for version warnings.
 	IOStreams *iostreams.IOStreams
 
@@ -32,11 +36,12 @@ type ClientOptions struct {
 // Client is a retryable HTTP client that injects version and auth headers
 // on every outgoing request.
 type Client struct {
-	inner      *retryablehttp.Client
-	appVersion string
-	token      string
-	headers    map[string]string
-	ios        *iostreams.IOStreams
+	inner       *retryablehttp.Client
+	appVersion  string
+	token       string
+	headers     map[string]string
+	orgOverride string
+	ios         *iostreams.IOStreams
 }
 
 // NewClient creates a Client wrapping hashicorp/go-retryablehttp with
@@ -55,11 +60,12 @@ func NewClient(opts ClientOptions) *Client {
 	}
 
 	return &Client{
-		inner:      rc,
-		appVersion: opts.AppVersion,
-		token:      opts.Token,
-		headers:    opts.Headers,
-		ios:        opts.IOStreams,
+		inner:       rc,
+		appVersion:  opts.AppVersion,
+		token:       opts.Token,
+		headers:     opts.Headers,
+		orgOverride: opts.OrgOverride,
+		ios:         opts.IOStreams,
 	}
 }
 
@@ -71,6 +77,10 @@ func (c *Client) Do(req *retryablehttp.Request) (*http.Response, error) {
 
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+
+	if c.orgOverride != "" {
+		req.Header.Set("X-Organization-Id", c.orgOverride)
 	}
 
 	for k, v := range c.headers {
