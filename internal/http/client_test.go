@@ -265,6 +265,33 @@ func TestCheckVersionNoWarningForDevVersion(t *testing.T) {
 	assert.Empty(t, errOut.String())
 }
 
+func TestClientOrgOverride_DoesNotOverwriteExistingHeader(t *testing.T) {
+	var gotOrgHeader string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotOrgHeader = r.Header.Get("X-Organization-Id")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	client := khhttp.NewClient(khhttp.ClientOptions{
+		Host:        srv.URL,
+		AppVersion:  "1.0.0",
+		OrgOverride: "flag-org",
+		IOStreams:    ios,
+	})
+
+	req, err := retryablehttp.NewRequest(http.MethodGet, srv.URL+"/test", nil)
+	require.NoError(t, err)
+	req.Header.Set("X-Organization-Id", "tool-arg-org")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, "tool-arg-org", gotOrgHeader, "per-request X-Organization-Id must not be overwritten by OrgOverride")
+}
+
 func TestSemverLessThan(t *testing.T) {
 	tests := []struct {
 		current  string

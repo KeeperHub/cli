@@ -82,6 +82,12 @@ func MakeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
 				return nil, fmt.Errorf("unmarshaling arguments: %w", err)
 			}
 		}
+		if args == nil {
+			args = make(map[string]any)
+		}
+
+		orgID := getStringArg(args, "organizationId")
+		delete(args, "organizationId")
 
 		bodyBytes, err := json.Marshal(args)
 		if err != nil {
@@ -100,7 +106,7 @@ func MakeToolHandler(f *cmdutil.Factory, actionType string) mcp.ToolHandler {
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
 
-		if orgID := getStringArg(args, "organizationId"); orgID != "" {
+		if orgID != "" {
 			httpReq.Header.Set("X-Organization-Id", orgID)
 		}
 

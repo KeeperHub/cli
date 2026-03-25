@@ -79,7 +79,7 @@ func (c *Client) Do(req *retryablehttp.Request) (*http.Response, error) {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 
-	if c.orgOverride != "" {
+	if c.orgOverride != "" && req.Header.Get("X-Organization-Id") == "" {
 		req.Header.Set("X-Organization-Id", c.orgOverride)
 	}
 

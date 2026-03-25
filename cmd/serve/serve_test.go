@@ -267,6 +267,7 @@ func TestMakeToolHandler_ExecutesAction(t *testing.T) {
 // header on the outgoing HTTP request.
 func TestMakeToolHandler_ForwardsOrgHeader(t *testing.T) {
 	var gotOrgHeader string
+	var gotBody []byte
 
 	actionServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/mcp/schemas" {
@@ -275,6 +276,7 @@ func TestMakeToolHandler_ForwardsOrgHeader(t *testing.T) {
 			return
 		}
 		gotOrgHeader = r.Header.Get("X-Organization-Id")
+		gotBody, _ = io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
@@ -302,6 +304,64 @@ func TestMakeToolHandler_ForwardsOrgHeader(t *testing.T) {
 	require.NotNil(t, result)
 
 	assert.Equal(t, "org_xyz789", gotOrgHeader, "handler must forward organizationId as X-Organization-Id header")
+
+	var sentBody map[string]any
+	require.NoError(t, json.Unmarshal(gotBody, &sentBody))
+	assert.NotContains(t, sentBody, "organizationId", "organizationId must not appear in the POST body")
+	assert.Contains(t, sentBody, "network", "other args must still be present in body")
+}
+
+// TestMakeToolHandler_ToolArgWinsOverOrgFlag verifies that when the tool arguments
+// include an organizationId field, it takes precedence over the --org flag value
+// set on the HTTP client.
+func TestMakeToolHandler_ToolArgWinsOverOrgFlag(t *testing.T) {
+	var gotOrgHeader string
+
+	actionServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/mcp/schemas" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"actions": map[string]interface{}{}})
+			return
+		}
+		gotOrgHeader = r.Header.Get("X-Organization-Id")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer actionServer.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	client := khhttp.NewClient(khhttp.ClientOptions{
+		Host:        actionServer.URL,
+		AppVersion:  "1.0.0",
+		OrgOverride: "flag-org",
+	})
+	f := &cmdutil.Factory{
+		AppVersion: "1.0.0",
+		IOStreams:   ios,
+		HTTPClient: func() (*khhttp.Client, error) { return client, nil },
+		Config:     func() (config.Config, error) { return config.Config{DefaultHost: actionServer.URL}, nil },
+		BaseURL:    func() string { return actionServer.URL },
+	}
+
+	handler := serve.MakeToolHandler(f, "web3/transfer")
+
+	args := map[string]any{"network": "1", "organizationId": "tool-arg-org"}
+	argsJSON, err := json.Marshal(args)
+	require.NoError(t, err)
+
+	req := &mcp.CallToolRequest{
+		Params: &mcp.CallToolParamsRaw{
+			Name:      "web3_transfer",
+			Arguments: argsJSON,
+		},
+	}
+
+	ctx := context.Background()
+	result, err := handler(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, "tool-arg-org", gotOrgHeader, "tool arg organizationId must win over --org flag")
 }
 
 // TestMakeToolHandler_NoOrgHeaderWhenAbsent verifies that when the tool arguments
