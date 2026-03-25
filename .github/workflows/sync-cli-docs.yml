@@ -32,7 +32,7 @@ jobs:
       - name: Checkout KeeperHub repo
         uses: actions/checkout@v4
         with:
-          repository: techops-services/keeperhub
+          repository: KeeperHub/keeperhub
           token: ${{ secrets.KEEPERHUB_PAT }}
           path: keeperhub
           ref: staging
