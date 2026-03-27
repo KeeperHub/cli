@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout CLI repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -30,7 +30,7 @@ jobs:
         run: go generate ./docs/...
 
       - name: Checkout KeeperHub repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: KeeperHub/keeperhub
           token: ${{ secrets.KEEPERHUB_PAT }}
