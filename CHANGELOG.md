@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/KeeperHub/cli/compare/v0.8.0...v0.9.0) (2026-04-21)
+
+
+### Features
+
+* **35:** add kh wallet add/info/fund/link wrappers around @keeperhub/wallet ([aaaadff](https://github.com/KeeperHub/cli/commit/aaaadff7981705b320b6fa299f4f0a9b5a91ea5c))
+* kh wallet add/info/fund/link wrappers around @keeperhub/wallet ([100febd](https://github.com/KeeperHub/cli/commit/100febdda1a757fcb7c6667ec82df506bce68885))
+
 ## [0.8.0](https://github.com/KeeperHub/cli/compare/v0.7.0...v0.8.0) (2026-03-25)
 
 
