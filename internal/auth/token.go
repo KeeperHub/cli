@@ -80,6 +80,7 @@ func fetchSessionInfo(host, token string) (TokenInfo, error) {
 		return TokenInfo{}, fmt.Errorf("creating session request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	khhttp.ApplyHostHeaders(req, host)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -142,6 +143,7 @@ func fetchAPIKeyInfo(host, token string) (TokenInfo, error) {
 		return TokenInfo{}, fmt.Errorf("creating validation request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	khhttp.ApplyHostHeaders(req, host)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -175,6 +177,7 @@ func fetchOrgDetails(client *http.Client, host, token, orgID string) (string, st
 		return "", ""
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	khhttp.ApplyHostHeaders(req, host)
 
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {

@@ -88,7 +88,7 @@ func main() {
 			return khhttp.NewClient(khhttp.ClientOptions{
 				Host:        activeHost,
 				Token:       resolved.Token,
-				Headers:     entry.Headers,
+				Headers:     khhttp.MergeCloudflareAccessEnv(entry.Headers),
 				OrgOverride: resolveOrgFlag(),
 				IOStreams:    ios,
 				AppVersion:  version.Version,
