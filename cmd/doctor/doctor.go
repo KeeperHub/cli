@@ -139,11 +139,15 @@ func getHost(f *cmdutil.Factory) (string, error) {
 
 // doGet performs a GET request against url with the given context, returning
 // the response. The caller is responsible for closing resp.Body.
-func doGet(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
+//
+// host is used to look up per-host headers (hosts.yml + Cloudflare Access env)
+// so doctor can reach environments behind CF Access.
+func doGet(ctx context.Context, client *http.Client, host, url string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	khhttp.ApplyHostHeaders(req, host)
 	return client.Do(req)
 }
 
@@ -168,7 +172,7 @@ func checkAuth(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	}
 
 	url := khhttp.BuildBaseURL(host) + "/api/auth/get-session"
-	resp, err := doGet(ctx, client, url)
+	resp, err := doGet(ctx, client, host, url)
 	if err != nil {
 		if isContextTimeout(err) {
 			return CheckResult{Status: "warn", Message: "auth check timed out"}
@@ -202,7 +206,7 @@ func checkAPI(ctx context.Context, f *cmdutil.Factory) CheckResult {
 
 	url := khhttp.BuildBaseURL(host) + "/api/health"
 	start := time.Now()
-	resp, err := doGet(ctx, client, url)
+	resp, err := doGet(ctx, client, host, url)
 	latency := time.Since(start)
 
 	if err != nil {
@@ -234,7 +238,7 @@ func checkWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	}
 
 	url := khhttp.BuildBaseURL(host) + "/api/user/wallet/balances"
-	resp, err := doGet(ctx, client, url)
+	resp, err := doGet(ctx, client, host, url)
 	if err != nil {
 		if isContextTimeout(err) {
 			return CheckResult{Status: "warn", Message: "wallet check timed out"}
@@ -277,7 +281,7 @@ func checkSpendCap(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	}
 
 	url := khhttp.BuildBaseURL(host) + "/api/billing/subscription"
-	resp, err := doGet(ctx, client, url)
+	resp, err := doGet(ctx, client, host, url)
 	if err != nil {
 		if isContextTimeout(err) {
 			return CheckResult{Status: "warn", Message: "spend cap check timed out"}
@@ -329,7 +333,7 @@ func checkChains(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	}
 
 	url := khhttp.BuildBaseURL(host) + "/api/chains"
-	resp, err := doGet(ctx, client, url)
+	resp, err := doGet(ctx, client, host, url)
 	if err != nil {
 		if isContextTimeout(err) {
 			return CheckResult{Status: "fail", Message: "could not reach chain service (timeout after 5s)"}
