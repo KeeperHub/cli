@@ -20,7 +20,8 @@ Agentic wallet (thin wrappers around npx @keeperhub/wallet):
   kh w add        provision a new agentic wallet (no account required)
   kh w info       print agentic subOrgId + walletAddress
   kh w fund       print Coinbase Onramp URL + Tempo deposit address
-  kh w link       link agentic wallet to a KeeperHub account (needs KH_SESSION_COOKIE)`,
+  kh w link       link agentic wallet to a KeeperHub account (needs KH_SESSION_COOKIE)
+  kh w feedback   submit ERC-8004 feedback for a workflow execution this wallet paid for`,
 		Example: `  # Creator wallet balance (REST):
   kh w balance
 
@@ -43,6 +44,7 @@ Agentic wallet (thin wrappers around npx @keeperhub/wallet):
 	cmd.AddCommand(NewInfoCmd(f))
 	cmd.AddCommand(NewFundCmd(f))
 	cmd.AddCommand(NewLinkCmd(f))
+	cmd.AddCommand(NewFeedbackCmd(f))
 
 	return cmd
 }
