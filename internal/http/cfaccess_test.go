@@ -69,6 +69,30 @@ func TestMergeCloudflareAccessEnv_EnvWinsOverBase(t *testing.T) {
 	assert.Equal(t, "preserved", out["X-Other"])
 }
 
+func TestMergeCloudflareAccessEnv_CookieAppendsToExisting(t *testing.T) {
+	t.Setenv("CF_ACCESS_CLIENT_ID", "")
+	t.Setenv("CF_ACCESS_CLIENT_SECRET", "")
+	t.Setenv("CF_AUTHORIZATION", "jwt-token")
+
+	base := map[string]string{"Cookie": "session=abc"}
+	out := khhttp.MergeCloudflareAccessEnv(base)
+
+	assert.Equal(t, "session=abc; CF_Authorization=jwt-token", out["Cookie"],
+		"existing Cookie value should be preserved and CF_Authorization appended")
+}
+
+func TestMergeCloudflareAccessEnv_ServiceTokenAndCookieCombined(t *testing.T) {
+	t.Setenv("CF_ACCESS_CLIENT_ID", "id-1")
+	t.Setenv("CF_ACCESS_CLIENT_SECRET", "secret-1")
+	t.Setenv("CF_AUTHORIZATION", "jwt-1")
+
+	out := khhttp.MergeCloudflareAccessEnv(nil)
+
+	assert.Equal(t, "id-1", out["CF-Access-Client-Id"])
+	assert.Equal(t, "secret-1", out["CF-Access-Client-Secret"])
+	assert.Equal(t, "CF_Authorization=jwt-1", out["Cookie"])
+}
+
 func TestMergeCloudflareAccessEnv_DoesNotMutateBase(t *testing.T) {
 	t.Setenv("CF_ACCESS_CLIENT_ID", "id")
 	t.Setenv("CF_ACCESS_CLIENT_SECRET", "secret")

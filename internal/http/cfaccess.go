@@ -41,7 +41,12 @@ func MergeCloudflareAccessEnv(base map[string]string) map[string]string {
 		out["CF-Access-Client-Secret"] = secret
 	}
 	if cookie != "" {
-		out["Cookie"] = "CF_Authorization=" + cookie
+		pair := "CF_Authorization=" + cookie
+		if existing, ok := out["Cookie"]; ok && existing != "" {
+			out["Cookie"] = existing + "; " + pair
+		} else {
+			out["Cookie"] = pair
+		}
 	}
 	return out
 }
