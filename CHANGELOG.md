@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.0](https://github.com/KeeperHub/cli/compare/v0.9.0...v0.10.0) (2026-05-07)
+
+
+### Features
+
+* add `kh w feedback` thin wrapper ([79be12c](https://github.com/KeeperHub/cli/commit/79be12c3ffcedee7930007728a302b59cb349aec))
+* KEEP-438 add Cloudflare Access header support ([c5f1326](https://github.com/KeeperHub/cli/commit/c5f132627453ea6d1fb2aa5460bf445657a07443))
+* KEEP-438 add Cloudflare Access header support for gated environments ([35c2802](https://github.com/KeeperHub/cli/commit/35c2802c4b1f7a02c92eb668b164c4567133214c))
+
+
+### Bug Fixes
+
+* KEEP-438 append CF_Authorization to existing Cookie header instead of clobbering ([e4b4f92](https://github.com/KeeperHub/cli/commit/e4b4f927e64be58f24484d2a06356ceb38b919ef))
+
 ## [0.9.0](https://github.com/KeeperHub/cli/compare/v0.8.0...v0.9.0) (2026-04-21)
 
 
