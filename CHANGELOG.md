@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/KeeperHub/cli/compare/v0.10.0...v0.11.0) (2026-05-12)
+
+
+### Features
+
+* KEEP-541 surface transactionHashes in run status ([6acae13](https://github.com/KeeperHub/cli/commit/6acae13347d27b90e74d6e895478b73f38d27f3f))
+* KEEP-541 surface transactionHashes in run status ([1317153](https://github.com/KeeperHub/cli/commit/13171536331518477adf4f2d7004869def8985d7))
+
 ## [0.10.0](https://github.com/KeeperHub/cli/compare/v0.9.0...v0.10.0) (2026-05-07)
 
 
