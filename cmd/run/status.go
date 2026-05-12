@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	khhttp "github.com/keeperhub/cli/internal/http"
@@ -15,10 +16,11 @@ import (
 
 // RunStatusResponse is the response from GET /api/workflows/executions/{id}/status.
 type RunStatusResponse struct {
-	Status       string       `json:"status"`
-	NodeStatuses []NodeStatus `json:"nodeStatuses"`
-	Progress     RunProgress  `json:"progress"`
-	ErrorContext any          `json:"errorContext"`
+	Status            string                 `json:"status"`
+	NodeStatuses      []NodeStatus           `json:"nodeStatuses"`
+	Progress          RunProgress            `json:"progress"`
+	ErrorContext      any                    `json:"errorContext"`
+	TransactionHashes []TransactionHashEntry `json:"transactionHashes"`
 }
 
 // NodeStatus holds per-node execution status.
@@ -35,6 +37,17 @@ type RunProgress struct {
 	CurrentNodeID   *string `json:"currentNodeId"`
 	CurrentNodeName *string `json:"currentNodeName"`
 	Percentage      int     `json:"percentage"`
+}
+
+// TransactionHashEntry is an on-chain transaction broadcast by a workflow step.
+// IterationIndex is set only for hashes produced inside a For-Each iteration.
+type TransactionHashEntry struct {
+	Hash           string  `json:"hash"`
+	NodeID         string  `json:"nodeId"`
+	NodeName       string  `json:"nodeName"`
+	ChainID        *int    `json:"chainId,omitempty"`
+	Network        *string `json:"network,omitempty"`
+	IterationIndex *int    `json:"iterationIndex,omitempty"`
 }
 
 var terminalStatuses = map[string]bool{
@@ -124,12 +137,42 @@ See also: kh r l, kh r cancel, kh wf run`,
 				return nil
 			}
 
+			printTransactions := func(status *RunStatusResponse) {
+				if p.IsJSON() || len(status.TransactionHashes) == 0 {
+					return
+				}
+				fmt.Fprintln(f.IOStreams.Out, "")
+				fmt.Fprintf(f.IOStreams.Out, "Transactions (%d):\n", len(status.TransactionHashes))
+				for _, tx := range status.TransactionHashes {
+					label := tx.NodeName
+					if tx.IterationIndex != nil {
+						label = fmt.Sprintf("%s[#%d]", tx.NodeName, *tx.IterationIndex)
+					}
+					var chain string
+					switch {
+					case tx.Network != nil && *tx.Network != "":
+						chain = *tx.Network
+					case tx.ChainID != nil:
+						chain = strconv.Itoa(*tx.ChainID)
+					}
+					if chain != "" {
+						fmt.Fprintf(f.IOStreams.Out, "  %s  %s  %s\n", tx.Hash, label, chain)
+					} else {
+						fmt.Fprintf(f.IOStreams.Out, "  %s  %s\n", tx.Hash, label)
+					}
+				}
+			}
+
 			if !watch {
 				status, fetchErr := fetchStatus()
 				if fetchErr != nil {
 					return fetchErr
 				}
-				return printSummary(status)
+				if printErr := printSummary(status); printErr != nil {
+					return printErr
+				}
+				printTransactions(status)
+				return nil
 			}
 
 			// Watch mode: poll until terminal status.
@@ -173,6 +216,7 @@ See also: kh r l, kh r cancel, kh wf run`,
 					if printErr := printSummary(status); printErr != nil {
 						return printErr
 					}
+					printTransactions(status)
 					if status.Status == "error" {
 						if status.ErrorContext != nil {
 							fmt.Fprintf(f.IOStreams.ErrOut, "Error: %v\n", status.ErrorContext)
