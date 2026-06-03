@@ -5,3 +5,6 @@ completions/
 .DS_Store
 vendor/
 /kh
+
+# Worktrees (local only)
+.worktrees/
