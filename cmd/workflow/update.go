@@ -14,11 +14,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type updateRequest struct {
-	Name        string        `json:"name,omitempty"`
-	Description string        `json:"description,omitempty"`
-	Nodes       []interface{} `json:"nodes,omitempty"`
-	Edges       []interface{} `json:"edges,omitempty"`
+// nullableID returns nil for an empty id so the JSON body carries an
+// explicit null (unassign); otherwise it returns the id unchanged.
+func nullableID(id string) interface{} {
+	if id == "" {
+		return nil
+	}
+	return id
 }
 
 func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
@@ -30,7 +32,13 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
   kh wf update abc123 --name "New Name"
 
   # Update nodes from file
-  kh wf update abc123 --nodes-file workflow.json`,
+  kh wf update abc123 --nodes-file workflow.json
+
+  # Assign the workflow to a project and tag
+  kh wf update abc123 --project proj_123 --tag tag_456
+
+  # Remove the workflow from its project (pass an empty value)
+  kh wf update abc123 --project ""`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workflowID := args[0]
 
@@ -47,13 +55,15 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			body := updateRequest{}
+			// A map lets a changed --project/--tag flag send an explicit
+			// null (unassign) that a struct with omitempty could not express.
+			body := map[string]interface{}{}
 
 			if name != "" {
-				body.Name = name
+				body["name"] = name
 			}
 			if description != "" {
-				body.Description = description
+				body["description"] = description
 			}
 
 			if nodesFile != "" {
@@ -69,8 +79,24 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 				if unmarshalErr := json.Unmarshal(fileData, &fileContent); unmarshalErr != nil {
 					return fmt.Errorf("parsing nodes file: %w", unmarshalErr)
 				}
-				body.Nodes = fileContent.Nodes
-				body.Edges = fileContent.Edges
+				body["nodes"] = fileContent.Nodes
+				body["edges"] = fileContent.Edges
+			}
+
+			if cmd.Flags().Changed("project") {
+				project, projectErr := cmd.Flags().GetString("project")
+				if projectErr != nil {
+					return projectErr
+				}
+				body["projectId"] = nullableID(project)
+			}
+
+			if cmd.Flags().Changed("tag") {
+				tag, tagErr := cmd.Flags().GetString("tag")
+				if tagErr != nil {
+					return tagErr
+				}
+				body["tagId"] = nullableID(tag)
 			}
 
 			client, err := f.HTTPClient()
@@ -124,6 +150,8 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().String("name", "", "New workflow name")
 	cmd.Flags().String("description", "", "New workflow description")
 	cmd.Flags().String("nodes-file", "", "Path to JSON file with nodes and edges")
+	cmd.Flags().String("project", "", "Project ID to assign (empty value unassigns)")
+	cmd.Flags().String("tag", "", "Tag ID to assign (empty value unassigns)")
 
 	return cmd
 }
