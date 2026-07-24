@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -41,7 +42,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
   kh wf ls
 
   # List with a higher limit
-  kh wf ls --limit 5`,
+  kh wf ls --limit 5
+
+  # List workflows in a project or with a tag
+  kh wf ls --project proj_123
+  kh wf ls --tag tag_456`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.HTTPClient()
 			if err != nil {
@@ -58,10 +63,28 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			host := cmdutil.ResolveHost(cmd, cfg)
-			url := khhttp.BuildBaseURL(host) + "/api/workflows?limit=" + strconv.Itoa(limit)
+			project, err := cmd.Flags().GetString("project")
+			if err != nil {
+				return err
+			}
 
-			req, err := client.NewRequest(http.MethodGet, url, nil)
+			tag, err := cmd.Flags().GetString("tag")
+			if err != nil {
+				return err
+			}
+
+			host := cmdutil.ResolveHost(cmd, cfg)
+			query := url.Values{}
+			query.Set("limit", strconv.Itoa(limit))
+			if project != "" {
+				query.Set("projectId", project)
+			}
+			if tag != "" {
+				query.Set("tagId", tag)
+			}
+			reqURL := khhttp.BuildBaseURL(host) + "/api/workflows?" + query.Encode()
+
+			req, err := client.NewRequest(http.MethodGet, reqURL, nil)
 			if err != nil {
 				return fmt.Errorf("building request: %w", err)
 			}
@@ -110,6 +133,8 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().Int("limit", 30, "Maximum number of workflows to list")
+	cmd.Flags().String("project", "", "Filter workflows by project ID")
+	cmd.Flags().String("tag", "", "Filter workflows by tag ID")
 
 	return cmd
 }

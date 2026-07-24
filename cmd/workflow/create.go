@@ -19,6 +19,8 @@ type createRequest struct {
 	Description string        `json:"description,omitempty"`
 	Nodes       []interface{} `json:"nodes"`
 	Edges       []interface{} `json:"edges"`
+	ProjectID   string        `json:"projectId,omitempty"`
+	TagID       string        `json:"tagId,omitempty"`
 }
 
 type createResponse struct {
@@ -40,7 +42,10 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
   kh wf create --name "DeFi Monitor" --nodes-file workflow.json
 
   # Create with inline JSON nodes
-  kh wf create --name "Test" --nodes '[{"id":"t1","type":"trigger","position":{"x":0,"y":0},"data":{"type":"trigger","config":{"triggerType":"Manual"}}}]'`,
+  kh wf create --name "Test" --nodes '[{"id":"t1","type":"trigger","position":{"x":0,"y":0},"data":{"type":"trigger","config":{"triggerType":"Manual"}}}]'
+
+  # Create inside a project and label it with a tag
+  kh wf create --name "Payouts" --project proj_123 --tag tag_456`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name, err := cmd.Flags().GetString("name")
 			if err != nil {
@@ -70,11 +75,23 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
+			project, err := cmd.Flags().GetString("project")
+			if err != nil {
+				return err
+			}
+
+			tag, err := cmd.Flags().GetString("tag")
+			if err != nil {
+				return err
+			}
+
 			body := createRequest{
 				Name:        name,
 				Description: description,
 				Nodes:       []interface{}{},
 				Edges:       []interface{}{},
+				ProjectID:   project,
+				TagID:       tag,
 			}
 
 			// Load nodes/edges from file if provided
@@ -166,6 +183,8 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().String("nodes-file", "", "Path to JSON file with nodes and edges")
 	cmd.Flags().String("nodes", "", "Inline JSON array of nodes")
 	cmd.Flags().String("edges", "", "Inline JSON array of edges")
+	cmd.Flags().String("project", "", "Project ID to assign the workflow to")
+	cmd.Flags().String("tag", "", "Tag ID to label the workflow")
 
 	return cmd
 }
