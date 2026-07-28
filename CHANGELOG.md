@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/KeeperHub/cli/compare/v0.12.0...v0.12.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* KEEP-1051 make docs generation actually run, and regenerate ([#76](https://github.com/KeeperHub/cli/issues/76)) ([1818e2b](https://github.com/KeeperHub/cli/commit/1818e2b7dfa5956c70fea680f708101ef507c0c5))
+
 ## [0.12.0](https://github.com/KeeperHub/cli/compare/v0.11.0...v0.12.0) (2026-07-28)
 
 
