@@ -27,8 +27,8 @@ func NewWorkflowCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(NewDeleteCmd(f))
 	cmd.AddCommand(NewUpdateCmd(f))
 	cmd.AddCommand(NewGoLiveCmd(f))
-	cmd.AddCommand(NewPauseCmd(f))
-	cmd.AddCommand(NewResumeCmd(f))
+	cmd.AddCommand(NewDisableCmd(f))
+	cmd.AddCommand(NewEnableCmd(f))
 
 	return cmd
 }
