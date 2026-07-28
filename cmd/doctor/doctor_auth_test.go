@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/keeperhub/cli/cmd/doctor"
@@ -70,9 +71,14 @@ func TestDoctorCmd_AuthPassesWhenCredentialIsAccepted(t *testing.T) {
 
 func TestDoctorCmd_AuthDoesNotProbeTheAnonymousTolerantEndpoint(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// Doctor fans its checks out across goroutines, so the handler runs
+	// concurrently and the record of seen paths has to be guarded.
+	var mu sync.Mutex
 	seen := make(map[string]bool)
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		seen[r.URL.Path] = true
+		mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{}`))
@@ -83,6 +89,8 @@ func TestDoctorCmd_AuthDoesNotProbeTheAnonymousTolerantEndpoint(t *testing.T) {
 	tc := doctor.NewTestableCmd(newDoctorFactory(ios, svr))
 	require.NoError(t, tc.Execute([]string{}))
 
+	mu.Lock()
+	defer mu.Unlock()
 	assert.True(t, seen[khhttp.CredentialProbePath], "auth check should probe the credential endpoint")
 	// get-session answers 200 to anyone, so probing it can only produce a
 	// false green.

@@ -73,7 +73,7 @@ See also: kh auth status, kh auth logout`,
 			// Re-running login on an already-authenticated host would strand
 			// the stored key and leave a new one behind on every invocation,
 			// so stop early unless the caller asked for a fresh credential.
-			if !(withToken || force) {
+			if !withToken && !force {
 				if entry, ok := hosts.HostEntry(host); ok && entry.Token != "" {
 					if info, infoErr := FetchTokenInfoFunc(host, entry.Token); infoErr == nil {
 						fmt.Fprintf(f.IOStreams.Out,
