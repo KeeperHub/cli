@@ -1,4 +1,4 @@
-package protocol
+package plugin
 
 import (
 	"encoding/json"

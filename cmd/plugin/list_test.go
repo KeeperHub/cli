@@ -1,4 +1,4 @@
-package protocol_test
+package plugin_test
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keeperhub/cli/cmd/protocol"
+	"github.com/keeperhub/cli/cmd/plugin"
 	"github.com/keeperhub/cli/internal/cache"
 	"github.com/keeperhub/cli/internal/config"
 	khhttp "github.com/keeperhub/cli/internal/http"
@@ -78,7 +78,7 @@ func TestListCmd_CacheMiss(t *testing.T) {
 	ios, outBuf, _, _ := iostreams.Test()
 	f := newProtoFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"list"})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestListCmd_CacheHit(t *testing.T) {
 	ios, outBuf, _, _ := iostreams.Test()
 	f := newProtoFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"list"})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestListCmd_Refresh(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	f := newProtoFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"list", "--refresh"})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestListCmd_StaleWithError(t *testing.T) {
 	ios, outBuf, errBuf, _ := iostreams.Test()
 	f := newProtoFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"list"})
 	err := cmd.Execute()
 	require.NoError(t, err, "stale cache with error should not return error")
@@ -188,7 +188,7 @@ func TestListCmd_NoCacheWithError(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	f := newProtoFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"list"})
 	err := cmd.Execute()
 	assert.Error(t, err, "expected error when no cache and API fails")
@@ -211,7 +211,7 @@ func TestListCmd_Table(t *testing.T) {
 	ios, outBuf, _, _ := iostreams.Test()
 	f := newProtoFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"list"})
 	err := cmd.Execute()
 	require.NoError(t, err)
