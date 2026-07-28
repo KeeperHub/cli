@@ -21,7 +21,7 @@ func NewLinkCmd(f *cmdutil.Factory) *cobra.Command {
 Thin wrapper around ` + "`npx @keeperhub/wallet link`" + `. Requires the KH_SESSION_COOKIE env var
 set to a valid kh session cookie (sign in at app.keeperhub.com, copy the session cookie, export it).
 
-v0.1.0 does not launch a browser session handshake; this env-var contract matches the npm CLI.`,
+This command does not launch a browser session handshake; the env-var contract matches the npm CLI.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if os.Getenv("KH_SESSION_COOKIE") == "" {
