@@ -11,7 +11,9 @@ import (
 	"github.com/spf13/cobra/doc"
 )
 
-//go:generate go run generate.go
+// The //go:generate directive lives in doc.go, not here: this file is excluded
+// from the build by the constraint above, so directives in it are never
+// scanned.
 
 func main() {
 	ios := iostreams.System()

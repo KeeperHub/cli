@@ -29,6 +29,18 @@ jobs:
       - name: Regenerate CLI docs
         run: go generate ./docs/...
 
+      # The sync copies whatever is on disk. If regeneration changes anything,
+      # the tag's committed reference did not match its own command tree, and
+      # the copy would silently publish stale pages. Fail here rather than open
+      # a PR that looks authoritative.
+      - name: Fail if the tag's committed docs are stale
+        run: |
+          if ! git diff --quiet -- docs/ || [ -n "$(git ls-files --others --exclude-standard docs/)" ]; then
+            echo "::error::Committed docs do not match generated output for this ref."
+            git status --short -- docs/
+            exit 1
+          fi
+
       - name: Checkout KeeperHub repo
         uses: actions/checkout@v4
         with:
@@ -46,6 +58,16 @@ jobs:
           # Sync command reference files
           rm -rf "$KH_DOCS/commands/"kh*.md
           cp "$CLI_DOCS/"kh*.md "$KH_DOCS/commands/"
+
+          # A partial copy publishes a reference that looks complete but omits
+          # commands entirely, which reads as "this command does not exist".
+          GENERATED=$(find "$CLI_DOCS" -maxdepth 1 -name 'kh*.md' | wc -l)
+          COPIED=$(find "$KH_DOCS/commands" -maxdepth 1 -name 'kh*.md' | wc -l)
+          if [ "$GENERATED" -ne "$COPIED" ]; then
+            echo "::error::Synced $COPIED of $GENERATED command pages."
+            exit 1
+          fi
+          echo "Synced $COPIED command pages."
 
           # Sync hand-written guides (add frontmatter for Nextra)
           for file in quickstart.md concepts.md; do
