@@ -63,7 +63,7 @@ func TestPauseSendsPATCH(t *testing.T) {
 	assert.Equal(t, "PATCH", receivedMethod)
 	assert.Equal(t, "/api/workflows/wf-abc", receivedPath)
 	assert.Equal(t, false, receivedBody["enabled"])
-	assert.Contains(t, outBuf.String(), "paused")
+	assert.Contains(t, outBuf.String(), "disabled")
 }
 
 func TestPauseYesFlagSkipsConfirmation(t *testing.T) {
@@ -106,7 +106,7 @@ func TestPausePromptDeclineReturnsCancelError(t *testing.T) {
 
 	// In non-TTY mode, --yes is not required and confirmation is skipped (auto-proceed)
 	require.NoError(t, err)
-	assert.Contains(t, outBuf.String(), "paused")
+	assert.Contains(t, outBuf.String(), "disabled")
 }
 
 func TestPauseNonTTYAutoProceeds(t *testing.T) {
@@ -155,20 +155,20 @@ func TestPauseHasYesFlag(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	f := &cmdutil.Factory{AppVersion: "1.0.0", IOStreams: ios}
 	parent := workflow.NewWorkflowCmd(f)
-	var pauseCmd *cobra.Command
+	var disableCmd *cobra.Command
 	for _, c := range parent.Commands() {
-		if strings.HasPrefix(c.Use, "pause") {
-			pauseCmd = c
+		if strings.HasPrefix(c.Use, "disable") {
+			disableCmd = c
 			break
 		}
 	}
-	require.NotNil(t, pauseCmd, "pause command not found")
+	require.NotNil(t, disableCmd, "disable command not found")
 	// --yes is a persistent flag inherited from root; verify it's accessible
-	flag := pauseCmd.Flags().Lookup("yes")
+	flag := disableCmd.Flags().Lookup("yes")
 	if flag == nil {
-		flag = pauseCmd.InheritedFlags().Lookup("yes")
+		flag = disableCmd.InheritedFlags().Lookup("yes")
 	}
 	_ = flag
 	// The test just verifies pause command exists and is wired correctly
-	assert.NotNil(t, pauseCmd)
+	assert.NotNil(t, disableCmd)
 }

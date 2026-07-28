@@ -59,9 +59,9 @@ func TestResumeSendsPATCHWithEnabledTrue(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "PATCH", receivedMethod)
 	assert.Equal(t, "/api/workflows/wf-abc", receivedPath)
-	// The inverse of pause: this is the assertion that distinguishes the two.
+	// The inverse of disable: this is the assertion that distinguishes the two.
 	assert.Equal(t, true, receivedBody["enabled"])
-	assert.Contains(t, outBuf.String(), "resumed")
+	assert.Contains(t, outBuf.String(), "enabled")
 }
 
 func TestResumeYesFlagSkipsConfirmation(t *testing.T) {

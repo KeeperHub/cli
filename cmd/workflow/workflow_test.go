@@ -23,7 +23,7 @@ func TestWorkflowCmdHas9Subcommands(t *testing.T) {
 	f := newTestFactory()
 	wfCmd := workflow.NewWorkflowCmd(f)
 	cmds := wfCmd.Commands()
-	assert.Equal(t, 9, len(cmds), "expected 9 subcommands: list, run, get, go-live, pause, resume, create, delete, update")
+	assert.Equal(t, 9, len(cmds), "expected 9 subcommands: list, run, get, go-live, disable, enable, create, delete, update")
 }
 
 func TestWorkflowCmdHasAlias(t *testing.T) {

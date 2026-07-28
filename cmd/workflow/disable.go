@@ -15,16 +15,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewPauseCmd(f *cmdutil.Factory) *cobra.Command {
+func NewDisableCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "pause <workflow-id>",
-		Short: "Pause a workflow",
-		Args:  cobra.ExactArgs(1),
-		Example: `  # Pause a workflow (will prompt for confirmation)
-  kh wf pause abc123
+		Use: "disable <workflow-id>",
+		// pause is the original name and stays working indefinitely; scripts
+		// and published links depend on it.
+		Aliases: []string{"pause"},
+		Short:   "Disable a workflow so it stops running",
+		Long: `Disable a workflow so it stops running.
 
-  # Pause without prompting
-  kh wf pause abc123 --yes`,
+Turns off a workflow without deleting it. Runs already in flight are unaffected;
+the trigger simply stops firing new ones.
+
+See also: kh workflow enable`,
+		Args: cobra.ExactArgs(1),
+		Example: `  # Disable a workflow (will prompt for confirmation)
+  kh wf disable abc123
+
+  # Disable without prompting
+  kh wf disable abc123 --yes
+
+  # pause is an alias and still works
+  kh wf pause abc123`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workflowID := args[0]
 
@@ -85,7 +97,7 @@ func NewPauseCmd(f *cmdutil.Factory) *cobra.Command {
 
 			p := output.NewPrinter(f.IOStreams, cmd)
 			return p.PrintData(result, func(tw table.Writer) {
-				fmt.Fprintf(f.IOStreams.Out, "Workflow %s paused\n", workflowID)
+				fmt.Fprintf(f.IOStreams.Out, "Workflow %s disabled\n", workflowID)
 				tw.Render()
 			})
 		},

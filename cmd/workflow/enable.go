@@ -15,17 +15,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewResumeCmd(f *cmdutil.Factory) *cobra.Command {
+func NewEnableCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "resume <workflow-id>",
-		Aliases: []string{"activate"},
-		Short:   "Resume a paused workflow",
-		Args:    cobra.ExactArgs(1),
-		Example: `  # Resume a workflow (will prompt for confirmation)
-  kh wf resume abc123
+		Use: "enable <workflow-id>",
+		// resume is the original name and stays working indefinitely; scripts
+		// and published links depend on it.
+		Aliases: []string{"resume", "activate"},
+		Short:   "Enable a workflow so it runs on its trigger",
+		Long: `Enable a workflow so it runs on its trigger.
 
-  # Resume without prompting
-  kh wf resume abc123 --yes`,
+Turns on a workflow that is currently disabled. This is the last step after
+creating one - a workflow does nothing until it is enabled.
+
+See also: kh workflow disable`,
+		Args: cobra.ExactArgs(1),
+		Example: `  # Enable a workflow (will prompt for confirmation)
+  kh wf enable abc123
+
+  # Enable without prompting
+  kh wf enable abc123 --yes
+
+  # resume is an alias and still works
+  kh wf resume abc123`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workflowID := args[0]
 
@@ -88,7 +99,7 @@ func NewResumeCmd(f *cmdutil.Factory) *cobra.Command {
 
 			p := output.NewPrinter(f.IOStreams, cmd)
 			return p.PrintData(result, func(tw table.Writer) {
-				fmt.Fprintf(f.IOStreams.Out, "Workflow %s resumed\n", workflowID)
+				fmt.Fprintf(f.IOStreams.Out, "Workflow %s enabled\n", workflowID)
 				tw.Render()
 			})
 		},
