@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.0](https://github.com/KeeperHub/cli/compare/v0.11.0...v0.12.0) (2026-07-28)
+
+
+### Features
+
+* link workflows to projects and tags ([2ac6356](https://github.com/KeeperHub/cli/commit/2ac63569667b1cf9938765e66375ce67f15aba94))
+* link workflows to projects and tags ([19320a8](https://github.com/KeeperHub/cli/commit/19320a8fd56e72ae5ae4cf893540cdc14b71c39a))
+
+
+### Bug Fixes
+
+* KEEP-1047 store the device-login API key and stop re-minting it ([#73](https://github.com/KeeperHub/cli/issues/73)) ([b5894f0](https://github.com/KeeperHub/cli/commit/b5894f0e6442bbf9e970254dff2dc56daa86902a))
+* KEEP-1049 validate credentials against an endpoint that requires auth ([#75](https://github.com/KeeperHub/cli/issues/75)) ([72f6889](https://github.com/KeeperHub/cli/commit/72f68896aea6a792edd149d4ad42f90251eca332))
+
 ## [0.11.0](https://github.com/KeeperHub/cli/compare/v0.10.0...v0.11.0) (2026-07-23)
 
 
