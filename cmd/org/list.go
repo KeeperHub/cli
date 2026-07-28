@@ -28,6 +28,13 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List organizations",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Long: `List organizations.
+
+Requires a browser session. The underlying endpoint resolves a session cookie
+and does not inspect the Authorization header, so this command returns 401
+under an API key regardless of the key's scope - even while 'kh workflow list'
+and the rest of the CLI work normally with that same key. A 401 here is not a
+sign that your key is broken. See 'kh auth-scope'.`,
 		Example: `  # List all organizations
   kh o ls
 
