@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.13.0](https://github.com/KeeperHub/cli/compare/v0.12.1...v0.13.0) (2026-07-28)
+
+
+### Features
+
+* KEEP-1053 add kh workflow enable and disable ([#80](https://github.com/KeeperHub/cli/issues/80)) ([d5d3681](https://github.com/KeeperHub/cli/commit/d5d3681e76c50e66d012b7feb70d8bcd1dc1d46a))
+
+
+### Bug Fixes
+
+* KEEP-1051 prune stale doc pages, drop a version tag, and rename cmd/protocol ([#78](https://github.com/KeeperHub/cli/issues/78)) ([401eb4c](https://github.com/KeeperHub/cli/commit/401eb4cf5e108ba0636069beb89f43da64a1ca46))
+
 ## [0.12.1](https://github.com/KeeperHub/cli/compare/v0.12.0...v0.12.1) (2026-07-28)
 
 
