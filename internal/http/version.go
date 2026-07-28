@@ -67,6 +67,8 @@ func checkVersion(current string, resp *http.Response, errOut io.Writer) {
 		return
 	}
 	if semverLessThan(current, minimum) {
-		fmt.Fprintf(errOut, "warning: your CLI version (%s) is outdated; minimum required is %s\n", current, minimum)
+		// Updates are manual and unprompted, so this line is the only signal an
+		// out-of-date CLI gets. Name the remedy rather than only the mismatch.
+		fmt.Fprintf(errOut, "warning: your CLI version (%s) is outdated; minimum required is %s. Run: kh update\n", current, minimum)
 	}
 }

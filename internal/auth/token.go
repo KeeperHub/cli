@@ -138,7 +138,15 @@ func fetchSessionInfo(host, token string) (TokenInfo, error) {
 func fetchAPIKeyInfo(host, token string) (TokenInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	req, err := http.NewRequest(http.MethodGet, khhttp.BuildBaseURL(host)+"/api/workflows?limit=1", nil)
+	// Must be an endpoint that requires auth. This previously probed
+	// /api/workflows, which resolves auth with required:false and answers 200
+	// with an empty list to anonymous callers - so every string beginning with
+	// kh_ validated, including revoked and fabricated keys.
+	req, err := http.NewRequest(
+		http.MethodGet,
+		khhttp.BuildBaseURL(host)+khhttp.CredentialProbePath,
+		nil,
+	)
 	if err != nil {
 		return TokenInfo{}, fmt.Errorf("creating validation request: %w", err)
 	}
