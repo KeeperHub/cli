@@ -12,7 +12,7 @@ import (
 	"github.com/keeperhub/cli/cmd/help"
 	"github.com/keeperhub/cli/cmd/org"
 	"github.com/keeperhub/cli/cmd/project"
-	"github.com/keeperhub/cli/cmd/protocol"
+	"github.com/keeperhub/cli/cmd/plugin"
 	"github.com/keeperhub/cli/cmd/read"
 	"github.com/keeperhub/cli/cmd/run"
 	"github.com/keeperhub/cli/cmd/serve"
@@ -53,7 +53,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(execute.NewExecuteCmd(f))
 	cmd.AddCommand(org.NewOrgCmd(f))
 	cmd.AddCommand(project.NewProjectCmd(f))
-	cmd.AddCommand(protocol.NewProtocolCmd(f))
+	cmd.AddCommand(plugin.NewPluginCmd(f))
 	cmd.AddCommand(read.NewReadCmd(f))
 	cmd.AddCommand(run.NewRunCmd(f))
 	cmd.AddCommand(serve.NewServeCmd(f))

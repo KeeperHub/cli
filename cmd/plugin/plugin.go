@@ -1,11 +1,11 @@
-package protocol
+package plugin
 
 import (
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
-func NewProtocolCmd(f *cmdutil.Factory) *cobra.Command {
+func NewPluginCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "plugin",
 		Short:   "Browse available plugins and integrations",

@@ -12,7 +12,7 @@ import (
 
 // SchemasResponse is the correct shape of the /api/mcp/schemas response.
 // The Actions field is a map keyed by actionType (e.g. "web3/check-balance").
-// NOTE: This is intentionally separate from cmd/protocol/list.go which uses a
+// NOTE: This is intentionally separate from cmd/plugin/list.go which uses a
 // different (incorrect) response shape for the protocol discovery commands.
 type SchemasResponse struct {
 	Actions map[string]ActionSchema `json:"actions"`

@@ -1,4 +1,4 @@
-package protocol_test
+package plugin_test
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/keeperhub/cli/cmd/protocol"
+	"github.com/keeperhub/cli/cmd/plugin"
 	"github.com/keeperhub/cli/internal/cache"
 	"github.com/keeperhub/cli/internal/config"
 	khhttp "github.com/keeperhub/cli/internal/http"
@@ -43,7 +43,7 @@ func TestGetCmd(t *testing.T) {
 	ios, outBuf, _, _ := iostreams.Test()
 	f := newProtoGetFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"get", "aave"})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	f := newProtoGetFactory(server, ios)
 
-	cmd := protocol.NewProtocolCmd(f)
+	cmd := plugin.NewPluginCmd(f)
 	cmd.SetArgs([]string{"get", "nonexistent-slug"})
 	err := cmd.Execute()
 	assert.Error(t, err)
