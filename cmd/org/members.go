@@ -42,6 +42,13 @@ func NewMembersCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "List organization members",
 		Aliases: []string{"m"},
 		Args:    cobra.NoArgs,
+		Long: `List organization members.
+
+Requires a browser session. This calls a Better Auth endpoint that resolves a
+session cookie and does not inspect the Authorization header, so it returns 401
+under an API key regardless of the key's scope - even while the rest of the CLI
+works normally with that same key. A 401 here is not a sign that your key is
+broken. See 'kh auth-scope'.`,
 		Example: `  # List members in the current organization
   kh o m
 

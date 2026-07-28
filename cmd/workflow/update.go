@@ -28,10 +28,30 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "update <workflow-id>",
 		Short: "Update a workflow",
 		Args:  cobra.ExactArgs(1),
+		Long: `Update a workflow.
+
+Nodes and edges can only be supplied as a file. Unlike 'kh workflow create',
+there are no inline --nodes / --edges flags here.
+
+The file is a JSON OBJECT holding both keys, not a bare array of nodes:
+
+  {"nodes": [...], "edges": [...]}
+
+Both keys are sent together, so --nodes-file replaces the whole graph. To
+change one node, fetch the current definition first:
+
+  kh workflow get <id> --json > workflow.json
+
+Node config is only lightly checked on the way in. An integrationId that
+matches no integration is accepted (the API treats unknown ids as stale-but-
+savable references), and "network" and "actionType" are not validated at all.
+A successful update is not evidence that the workflow runs - misconfiguration
+surfaces at execution time.`,
 		Example: `  # Update workflow name
   kh wf update abc123 --name "New Name"
 
-  # Update nodes from file
+  # Update nodes from file - the file is an object, not an array:
+  #   {"nodes": [ ... ], "edges": [ ... ]}
   kh wf update abc123 --nodes-file workflow.json
 
   # Assign the workflow to a project and tag
@@ -149,7 +169,7 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().String("name", "", "New workflow name")
 	cmd.Flags().String("description", "", "New workflow description")
-	cmd.Flags().String("nodes-file", "", "Path to JSON file with nodes and edges")
+	cmd.Flags().String("nodes-file", "", `Path to a JSON file shaped {"nodes": [...], "edges": [...]}; replaces the whole graph`)
 	cmd.Flags().String("project", "", "Project ID to assign (empty value unassigns)")
 	cmd.Flags().String("tag", "", "Tag ID to assign (empty value unassigns)")
 
