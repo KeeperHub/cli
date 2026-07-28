@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	internalauth "github.com/keeperhub/cli/internal/auth"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/keeperhub/cli/pkg/iostreams"
@@ -148,6 +149,14 @@ func doGet(ctx context.Context, client *http.Client, host, url string) (*http.Re
 		return nil, err
 	}
 	khhttp.ApplyHostHeaders(req, host)
+	// Every doctor check runs through here, and none of them used to send a
+	// credential. The auth check only appeared to pass because it probed an
+	// endpoint that answers 200 to anonymous callers; the wallet and spend-cap
+	// checks reported "requires authentication" even for a valid key, because
+	// they genuinely were anonymous.
+	if resolved, resolveErr := internalauth.ResolveToken(host); resolveErr == nil && resolved.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+resolved.Token)
+	}
 	return client.Do(req)
 }
 
@@ -171,7 +180,11 @@ func checkAuth(ctx context.Context, f *cmdutil.Factory) CheckResult {
 		return CheckResult{Status: "warn", Message: "could not create HTTP client"}
 	}
 
-	url := khhttp.BuildBaseURL(host) + "/api/auth/get-session"
+	// This previously probed /api/auth/get-session, which answers 200 with a
+	// null session for unauthenticated callers instead of 401. Switching on the
+	// status code therefore reported every caller as authenticated, including
+	// callers with no credential stored at all.
+	url := khhttp.BuildBaseURL(host) + khhttp.CredentialProbePath
 	resp, err := doGet(ctx, client, host, url)
 	if err != nil {
 		if isContextTimeout(err) {
