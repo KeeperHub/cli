@@ -12,6 +12,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// apiKeyName mirrors the label the server attaches to keys minted by the
+// device-authorization flow, so the CLI can name the credential it just
+// created without a second round trip.
+const apiKeyName = "kh CLI"
+
 // DeviceLoginFunc is the function used to perform device-code login.
 // Tests may override this to avoid real network calls.
 var DeviceLoginFunc = func(host string, ios *iostreams.IOStreams) (string, error) {
@@ -61,6 +66,23 @@ See also: kh auth status, kh auth logout`,
 			host := hosts.ActiveHost(flagHost, envHost)
 
 			withToken, _ := cmd.Flags().GetBool("with-token")
+			force, _ := cmd.Flags().GetBool("force")
+
+			// Completing the device flow mints a new organization API key
+			// server-side, and the plaintext key is returned exactly once.
+			// Re-running login on an already-authenticated host would strand
+			// the stored key and leave a new one behind on every invocation,
+			// so stop early unless the caller asked for a fresh credential.
+			if !(withToken || force) {
+				if entry, ok := hosts.HostEntry(host); ok && entry.Token != "" {
+					if info, infoErr := FetchTokenInfoFunc(host, entry.Token); infoErr == nil {
+						fmt.Fprintf(f.IOStreams.Out,
+							"Already logged in to %s as %s\nUse --force to replace the stored API key.\n",
+							host, info.Email)
+						return nil
+					}
+				}
+			}
 
 			var token string
 
@@ -88,15 +110,28 @@ See also: kh auth status, kh auth logout`,
 			info, err := FetchTokenInfoFunc(host, token)
 			if err != nil {
 				fmt.Fprintf(f.IOStreams.Out, "Logged in to %s\n", host)
-				return nil
+			} else {
+				fmt.Fprintf(f.IOStreams.Out, "Logged in to %s as %s\n", host, info.Email)
 			}
 
-			fmt.Fprintf(f.IOStreams.Out, "Logged in to %s as %s\n", host, info.Email)
+			// The device flow creates a real organization API key rather than a
+			// browser session. Say so plainly: it is a durable credential the
+			// user can see and revoke in the dashboard, not an invisible login.
+			if !withToken {
+				fmt.Fprintf(f.IOStreams.Out,
+					"Created a new organization API key (%q) and stored it in %s\nRevoke it from the KeeperHub dashboard under API keys.\n",
+					apiKeyName, config.HostsFile())
+			}
 			return nil
 		},
 	}
 
 	cmd.Flags().Bool("with-token", false, "Read token from stdin")
+	cmd.Flags().Bool(
+		"force",
+		false,
+		"Log in again even if a valid credential is stored, creating a new API key",
+	)
 
 	return cmd
 }
