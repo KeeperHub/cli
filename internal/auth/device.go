@@ -128,7 +128,9 @@ func pollDeviceToken(ctx context.Context, baseURL, deviceCode string, interval t
 		case "slow_down":
 			interval += 5 * time.Second
 		case "expired_token":
-			return "", errors.New("device code expired, run 'kh auth login --no-browser' again")
+			// --no-browser does not exist; suggesting it sent users looking for
+			// a flag the CLI has never had.
+			return "", errors.New("device code expired, run 'kh auth login' again")
 		case "access_denied":
 			return "", errors.New("authentication denied")
 		default:
