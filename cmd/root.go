@@ -63,6 +63,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(version.NewVersionCmd(f))
 	cmd.AddCommand(wallet.NewWalletCmd(f))
 	cmd.AddCommand(workflow.NewWorkflowCmd(f))
+	cmd.AddCommand(help.NewAuthScopeTopic())
 	cmd.AddCommand(help.NewEnvironmentTopic())
 	cmd.AddCommand(help.NewExitCodesTopic())
 	cmd.AddCommand(help.NewFormattingTopic())

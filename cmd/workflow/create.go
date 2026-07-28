@@ -35,13 +35,33 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Create a workflow",
 		Aliases: []string{"new"},
 		Args:    cobra.NoArgs,
+		Long: `Create a workflow.
+
+Nodes and edges can be supplied two ways, and the two take different shapes:
+
+  --nodes-file FILE   a JSON OBJECT: {"nodes": [...], "edges": [...]}
+  --nodes / --edges   bare JSON ARRAYS, passed separately
+
+Inline flags override the file when both are given. 'kh workflow update' accepts
+only --nodes-file, so a file is the portable choice if you intend to edit the
+workflow later.
+
+New workflows are created DISABLED. There is no --enabled flag; enable the
+workflow in the web app, or PATCH "enabled": true against the API directly.
+
+Node config is only lightly checked on the way in. An integrationId that
+matches no integration is accepted (the API treats unknown ids as stale-but-
+savable references), and "network" and "actionType" are not validated at all.
+A successful create is not evidence that the workflow runs - misconfiguration
+surfaces at execution time.`,
 		Example: `  # Create an empty workflow
   kh wf create --name "My Workflow"
 
-  # Create with nodes from a JSON file
+  # Create with nodes from a JSON file - the file is an object, not an array:
+  #   {"nodes": [ ... ], "edges": [ ... ]}
   kh wf create --name "DeFi Monitor" --nodes-file workflow.json
 
-  # Create with inline JSON nodes
+  # Create with inline JSON nodes - these flags take bare arrays
   kh wf create --name "Test" --nodes '[{"id":"t1","type":"trigger","position":{"x":0,"y":0},"data":{"type":"trigger","config":{"triggerType":"Manual"}}}]'
 
   # Create inside a project and label it with a tag
@@ -180,9 +200,9 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().String("name", "", "Workflow name (required)")
 	cmd.Flags().String("description", "", "Workflow description")
-	cmd.Flags().String("nodes-file", "", "Path to JSON file with nodes and edges")
-	cmd.Flags().String("nodes", "", "Inline JSON array of nodes")
-	cmd.Flags().String("edges", "", "Inline JSON array of edges")
+	cmd.Flags().String("nodes-file", "", `Path to a JSON file shaped {"nodes": [...], "edges": [...]}`)
+	cmd.Flags().String("nodes", "", "Inline JSON array of nodes (overrides --nodes-file)")
+	cmd.Flags().String("edges", "", "Inline JSON array of edges (overrides --nodes-file)")
 	cmd.Flags().String("project", "", "Project ID to assign the workflow to")
 	cmd.Flags().String("tag", "", "Tag ID to label the workflow")
 

@@ -59,6 +59,55 @@ func NewExitCodesTopic() *cobra.Command {
 	}
 }
 
+// NewAuthScopeTopic returns a non-runnable help topic command describing what a
+// token can and cannot reach, and how to find an integrationId.
+//
+// Deliberately not named "api-keys": cmd/root_test.go asserts the string
+// "api-key" never appears in --help, guarding against the apikey command stubs
+// removed in 9acd41d reappearing.
+func NewAuthScopeTopic() *cobra.Command {
+	return &cobra.Command{
+		Use:   "auth-scope",
+		Short: "What a token can reach, and what needs a browser session",
+		Long: `Most kh commands authenticate with an API key ('kh auth login', keys start
+with kh_). A few endpoints do not accept keys at all, which is why some
+commands return 401 even though your key is valid and working elsewhere.
+
+Session-only commands
+---------------------
+
+  kh org list
+  kh org members
+
+These call endpoints that resolve a browser session cookie and never inspect
+the Authorization header, so an API key of any scope gets 401. This is a
+property of those endpoints, not a problem with your key: if 'kh workflow
+list' works, your key is fine. Use the web app for organization membership.
+
+Finding an integrationId
+------------------------
+
+Every web3 action node needs an integrationId, and there is no
+'kh integration list' command yet. The integrations endpoint does accept API
+keys, so query it directly:
+
+  curl -s -H "Authorization: Bearer $KH_TOKEN" \
+    https://app.keeperhub.com/api/integrations | jq '.[] | {id, name, type}'
+
+Pick the row with "type": "web3". An organization has at most one.
+
+If you cannot reach that endpoint, the fallback is to read the id off an
+existing workflow that already has a working web3 node:
+
+  kh workflow get <id> --json | jq -r '.nodes[].data.config.integrationId | select(.)'
+
+One integrationId covers every chain, EVM and Solana alike - it identifies the
+organization's wallet, not a network. Seeing the same id on nodes targeting
+different chains is expected. The chain is chosen by each node's own
+config.network value.`,
+	}
+}
+
 // NewFormattingTopic returns a non-runnable help topic command for output formatting.
 func NewFormattingTopic() *cobra.Command {
 	return &cobra.Command{
@@ -74,10 +123,34 @@ readability. You can change the output format with the following flags:
 
   --jq EXPR
       Filter or transform the JSON output using a jq expression. No
-      external jq binary is required -- the expression is evaluated
+      external jq binary is required - the expression is evaluated
       inside kh.
       Example: kh workflow list --json --jq '.[0].id'
       Example: kh auth status --json --jq '.email'
+
+      The result is re-serialized as pretty-printed JSON. This is not
+      jq's raw mode: there is no equivalent of jq -r, so strings keep
+      their quotes and a filter matching several values prints a JSON
+      array, not one value per line.
+
+        $ kh workflow list --json --jq '.[0].id'
+        "wf_abc123"
+
+        $ kh workflow list --json --jq '.[].id'
+        [
+          "wf_abc123",
+          "wf_def456"
+        ]
+
+      So the obvious shell idiom does not work - it iterates over the
+      brackets and the trailing commas, and the next command fails with
+      a not-found error naming an id like "wf_abc123," :
+
+        for id in $(kh workflow list --json --jq '.[].id'); do ...
+
+      To get bare values, pipe --json output to a real jq:
+
+        kh workflow list --json | jq -r '.[].id'
 
   --no-color
       Disable ANSI color codes in output. Color is also disabled
