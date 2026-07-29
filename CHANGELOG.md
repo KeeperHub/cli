@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/KeeperHub/cli/compare/v0.13.0...v0.13.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* KEEP-1056 pin cobra/doc tooling deps so go mod tidy stops pruning go.sum ([#82](https://github.com/KeeperHub/cli/issues/82)) ([bde0e8f](https://github.com/KeeperHub/cli/commit/bde0e8f69d434087b281cb75dcf1244817cc0d70))
+
 ## [0.13.0](https://github.com/KeeperHub/cli/compare/v0.12.1...v0.13.0) (2026-07-28)
 
 
