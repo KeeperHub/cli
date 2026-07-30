@@ -368,14 +368,47 @@ func checkChains(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	return CheckResult{Status: "pass", Message: fmt.Sprintf("%d chains available", len(chains))}
 }
 
-// checkCLIVersion reports the current CLI version. Network-based latest-version
-// checking is deferred to Phase 24; this check is always instantaneous.
-func checkCLIVersion(_ context.Context, f *cmdutil.Factory) CheckResult {
+// checkCLIVersion reports the current CLI version, and warns if it is older
+// than the floor the server advertises via the KH-Minimum-CLI-Version
+// response header (see khhttp.MinimumVersionHeader).
+func checkCLIVersion(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	v := f.AppVersion
 	if v == "" || v == "dev" || strings.HasPrefix(v, "v0.0.0") {
 		return CheckResult{Status: "warn", Message: "development build"}
 	}
-	return CheckResult{Status: "pass", Message: fmt.Sprintf("v%s", strings.TrimPrefix(v, "v"))}
+	current := strings.TrimPrefix(v, "v")
+	localVersion := "v" + current
+
+	host, err := getHost(f)
+	if err != nil {
+		return CheckResult{Status: "pass", Message: localVersion}
+	}
+	client, err := getHTTPClient(f)
+	if err != nil {
+		return CheckResult{Status: "pass", Message: localVersion}
+	}
+
+	url := khhttp.BuildBaseURL(host) + "/api/health"
+	resp, err := doGet(ctx, client, host, url)
+	if err != nil {
+		// No server to compare against -- report the local version rather
+		// than failing a check whose job is reachability elsewhere (checkAPI).
+		return CheckResult{Status: "pass", Message: localVersion}
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+
+	minimum := resp.Header.Get(khhttp.MinimumVersionHeader)
+	if minimum == "" {
+		return CheckResult{Status: "pass", Message: localVersion}
+	}
+	if khhttp.SemverLessThan(current, minimum) {
+		return CheckResult{
+			Status:  "warn",
+			Message: fmt.Sprintf("%s is outdated; minimum required is %s. Run: kh update", localVersion, minimum),
+		}
+	}
+	return CheckResult{Status: "pass", Message: localVersion}
 }
 
 // abbreviateAddr shortens a long address like 0xABCD...1234.

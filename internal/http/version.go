@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+// MinimumVersionHeader is the response header the server uses to advertise
+// the oldest CLI version it considers supported (see keeperhub's
+// lib/cli-version.ts). Shared so every call site checks the same header.
+const MinimumVersionHeader = "KH-Minimum-CLI-Version"
+
 // semverLessThan returns true if current is strictly less than minimum.
 // Returns false if current is "dev" or unparseable -- dev builds never trigger warnings.
 func semverLessThan(current, minimum string) bool {
@@ -62,7 +67,7 @@ func checkVersion(current string, resp *http.Response, errOut io.Writer) {
 	if resp == nil {
 		return
 	}
-	minimum := resp.Header.Get("KH-Minimum-CLI-Version")
+	minimum := resp.Header.Get(MinimumVersionHeader)
 	if minimum == "" {
 		return
 	}
