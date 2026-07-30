@@ -85,10 +85,19 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 				Host:      host,
 			}
 
+			// API keys have no real identity to show - info.Email holds a
+			// truncated key prefix for lack of one - so the row is labeled as
+			// a credential rather than presented as though the key were a
+			// user account.
+			userLabel := "User"
+			if info.Method == internalauth.AuthMethodAPIKey {
+				userLabel = "Credential"
+			}
+
 			p := output.NewPrinter(f.IOStreams, cmd)
 			return p.PrintData(data, func(tw table.Writer) {
 				tw.AppendRow(table.Row{"Host", host})
-				tw.AppendRow(table.Row{"User", info.Email})
+				tw.AppendRow(table.Row{userLabel, info.Email})
 				tw.AppendRow(table.Row{"Organization", info.OrgName})
 				tw.AppendRow(table.Row{"Role", info.Role})
 				if expiresAt != "" {
