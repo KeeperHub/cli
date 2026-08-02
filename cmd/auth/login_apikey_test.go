@@ -56,6 +56,37 @@ func TestLoginCmd_SkipsWhenStoredTokenIsValid(t *testing.T) {
 	}
 }
 
+// fetchAPIKeyInfo sets Email to a truncated key prefix for lack of a real
+// identity. This pins that the already-logged-in notice names it as a
+// credential rather than presenting the prefix as though it were an account.
+func TestLoginCmd_AlreadyLoggedInNamesAPIKeyAsCredential(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	if err := config.SetHostToken(testHost, "kh_already_stored"); err != nil {
+		t.Fatalf("seeding token: %v", err)
+	}
+
+	ios, buf, _, _ := iostreams.Test()
+	auth.DeviceLoginFunc = func(string, *iostreams.IOStreams) (string, error) {
+		t.Fatal("DeviceLogin must not run when a valid token is stored")
+		return "", nil
+	}
+	auth.SetTokenFunc = func(string, string) error { return nil }
+	auth.FetchTokenInfoFunc = func(_, token string) (internalauth.TokenInfo, error) {
+		return internalauth.TokenInfo{Email: "kh_EU7Fc1Xi...", Method: internalauth.AuthMethodAPIKey}, nil
+	}
+
+	cmd := auth.NewLoginCmd(&cmdutil.Factory{IOStreams: ios})
+	cmd.SetArgs([]string{})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "as API key kh_EU7Fc1Xi...") {
+		t.Errorf("expected the key prefix named as an API key, got: %q", out)
+	}
+}
+
 func TestLoginCmd_ForceReplacesStoredToken(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	if err := config.SetHostToken(testHost, "kh_already_stored"); err != nil {

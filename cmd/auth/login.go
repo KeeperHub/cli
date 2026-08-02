@@ -35,6 +35,17 @@ var FetchTokenInfoFunc = func(host, token string) (internalauth.TokenInfo, error
 	return internalauth.FetchTokenInfo(host, token)
 }
 
+// credentialIdentity describes info for "logged in as %s" style messages.
+// API keys have no real identity to show - info.Email holds a truncated key
+// prefix for lack of one - so it is named as a credential rather than
+// presented as though the key were an account.
+func credentialIdentity(info internalauth.TokenInfo) string {
+	if info.Method == internalauth.AuthMethodAPIKey {
+		return "API key " + info.Email
+	}
+	return info.Email
+}
+
 func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -78,7 +89,7 @@ See also: kh auth status, kh auth logout`,
 					if info, infoErr := FetchTokenInfoFunc(host, entry.Token); infoErr == nil {
 						fmt.Fprintf(f.IOStreams.Out,
 							"Already logged in to %s as %s\nUse --force to replace the stored API key.\n",
-							host, info.Email)
+							host, credentialIdentity(info))
 						return nil
 					}
 				}
@@ -111,7 +122,7 @@ See also: kh auth status, kh auth logout`,
 			if err != nil {
 				fmt.Fprintf(f.IOStreams.Out, "Logged in to %s\n", host)
 			} else {
-				fmt.Fprintf(f.IOStreams.Out, "Logged in to %s as %s\n", host, info.Email)
+				fmt.Fprintf(f.IOStreams.Out, "Logged in to %s as %s\n", host, credentialIdentity(info))
 			}
 
 			// The device flow creates a real organization API key rather than a
