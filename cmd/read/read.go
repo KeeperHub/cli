@@ -34,7 +34,9 @@ The function signature should be in Solidity format (e.g. "balanceOf(address)").
 Arguments are positional and must match the function signature types.
 
 Supported argument types: address, uint256, bool, bytes32.
-No auth required; uses public RPC endpoints by default.`,
+
+No auth required. The RPC endpoint is yours to supply, via --rpc-url, the
+KH_RPC_URL env var, or an rpc.<chain-id> entry in the config file.`,
 		Aliases: []string{"call"},
 		Args:    cobra.MinimumNArgs(2),
 		Example: `  # Read USDT total supply
@@ -62,9 +64,7 @@ No auth required; uses public RPC endpoints by default.`,
 				cfg = config.DefaultConfig()
 			}
 
-			chains := loadChainsForRPC(f)
-
-			endpoint, err := rpc.Resolve(chainID, rpcURL, cfg, chains)
+			endpoint, err := rpc.Resolve(chainID, rpcURL, cfg)
 			if err != nil {
 				return err
 			}
@@ -101,58 +101,6 @@ No auth required; uses public RPC endpoints by default.`,
 	cmd.Flags().BoolVar(&raw, "raw", false, "Output raw hex instead of decoded")
 
 	return cmd
-}
-
-// loadChainsForRPC attempts to load cached chain data for RPC resolution.
-// Returns nil on any error since chain data is optional for RPC resolution
-// (the user may have --rpc-url or config entries).
-func loadChainsForRPC(f *cmdutil.Factory) []rpc.ChainInfo {
-	chains, err := rpc.LoadChains()
-	if err != nil {
-		// Try fetching from platform
-		chains = fetchAndCacheChains(f)
-	}
-	return chains
-}
-
-// fetchAndCacheChains fetches chain data from the platform API and caches it.
-// Returns nil if the fetch fails.
-func fetchAndCacheChains(f *cmdutil.Factory) []rpc.ChainInfo {
-	client, err := f.HTTPClient()
-	if err != nil {
-		return nil
-	}
-
-	baseURL := f.BaseURL()
-	url := baseURL + "/api/chains"
-
-	req, err := client.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil
-	}
-
-	_ = rpc.CacheChains(json.RawMessage(body))
-
-	var chains []rpc.ChainInfo
-	if err := json.Unmarshal(body, &chains); err != nil {
-		return nil
-	}
-	return chains
 }
 
 // keccak256 computes the Keccak-256 hash of data.
