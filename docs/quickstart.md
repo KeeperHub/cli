@@ -2,10 +2,22 @@
 
 ## Install
 
-**Homebrew (macOS/Linux):**
+**Homebrew (macOS/Linux with Homebrew):**
 ```
 brew install keeperhub/tap/kh
 ```
+
+**Linux (no Homebrew / headless):**
+```bash
+mkdir -p ~/.local/bin
+curl -fsSL https://api.github.com/repos/keeperhub/cli/releases/latest \
+  | grep browser_download_url \
+  | grep linux_amd64.tar.gz \
+  | cut -d '"' -f 4 \
+  | xargs curl -fsSL \
+  | tar -xzf - -C ~/.local/bin kh
+```
+Replace `linux_amd64` with `linux_arm64` on ARM. Ensure `~/.local/bin` is on your `PATH`.
 
 **Go install:**
 ```
@@ -20,7 +32,7 @@ go install github.com/keeperhub/cli/cmd/kh@latest
 kh auth login
 ```
 
-This opens a browser window to authenticate. Your token is stored in the OS keyring.
+This uses the **device code flow**: it prints a URL and a short code. Open the URL in any browser (including on a different machine) and enter the code to complete sign-in. On headless or remote boxes the browser will not open automatically — copy the URL from the terminal. Codes expire after roughly two minutes; re-run `kh auth login` if yours expires before you can visit it. Your token is stored in the OS keyring.
 
 To authenticate non-interactively (CI/CD), set `KH_API_KEY` instead.
 
