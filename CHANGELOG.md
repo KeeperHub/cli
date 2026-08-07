@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.2](https://github.com/KeeperHub/cli/compare/v0.13.1...v0.13.2) (2026-08-07)
+
+
+### Bug Fixes
+
+* KEEP-1049 compare CLI version against server floor, stop showing API keys as identities ([#84](https://github.com/KeeperHub/cli/issues/84)) ([70c1a13](https://github.com/KeeperHub/cli/commit/70c1a13402978c12f322adeea27b37bc99b9e79e))
+* remove the dead platform RPC fallback from chain resolution ([4ccb7d5](https://github.com/KeeperHub/cli/commit/4ccb7d5119b0099ea623776e6605aa1c53c5b36d))
+* remove the dead platform RPC fallback from chain resolution ([cae254b](https://github.com/KeeperHub/cli/commit/cae254bd64a3c88451efde0cec48d22864b0dd08))
+
 ## [0.13.1](https://github.com/KeeperHub/cli/compare/v0.13.0...v0.13.1) (2026-07-29)
 
 
