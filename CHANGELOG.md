@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.14.0](https://github.com/KeeperHub/cli/compare/v0.13.2...v0.14.0) (2026-08-07)
+
+
+### Features
+
+* report the agentic wallet in doctor ([968fbda](https://github.com/KeeperHub/cli/commit/968fbda7ae4f9440ae0327db065b666f734e18b9))
+* report the agentic wallet in doctor ([6be348c](https://github.com/KeeperHub/cli/commit/6be348c35195f1ae7d13fc86ebf043812336fca7))
+
+
+### Bug Fixes
+
+* address review findings on the agentic wallet check ([dd05088](https://github.com/KeeperHub/cli/commit/dd050881069088d9bc4c49b410de801a6357ccdd))
+* drop the invented endpoint from the no-wallet message ([a21fefb](https://github.com/KeeperHub/cli/commit/a21fefb50efb0e9ab443eaf28047cf7143cee9b0))
+* report the wallet doctor actually found ([34193d1](https://github.com/KeeperHub/cli/commit/34193d1943658ba738cc73e0fcd6956363b7ab1e))
+* report the wallet doctor actually found ([d3267de](https://github.com/KeeperHub/cli/commit/d3267de01458f4f2cf5251ebe7d1f1ad5f5043f7))
+
 ## [0.13.2](https://github.com/KeeperHub/cli/compare/v0.13.1...v0.13.2) (2026-08-07)
 
 
