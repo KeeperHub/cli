@@ -291,7 +291,9 @@ func checkWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 			// so say where it comes from rather than only that it is absent.
 			return CheckResult{
 				Status:  "warn",
-				Message: "no wallet configured (create one in Settings, or POST /api/integrations/wallet)",
+				// Provisioning is session-only, so there is no endpoint worth
+				// naming here: an agent cannot call it.
+				Message: "no wallet configured (create one in Settings)",
 			}
 		}
 		short := abbreviateAddr(payload.Address)
