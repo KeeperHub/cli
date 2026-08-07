@@ -19,9 +19,34 @@ type BalancesResponse struct {
 	Balances      []ChainBalance `json:"balances"`
 }
 
+// FlexibleString holds a value the API has returned as either a JSON string
+// or a JSON number, normalising both to string.
+type FlexibleString string
+
+func (f *FlexibleString) UnmarshalJSON(b []byte) error {
+	// Per the Unmarshaler contract, null is a no-op.
+	if string(b) == "null" {
+		return nil
+	}
+	if len(b) > 0 && b[0] == '"' {
+		var s string
+		if err := json.Unmarshal(b, &s); err != nil {
+			return err
+		}
+		*f = FlexibleString(s)
+		return nil
+	}
+	var n json.Number
+	if err := json.Unmarshal(b, &n); err != nil {
+		return err
+	}
+	*f = FlexibleString(n.String())
+	return nil
+}
+
 // ChainBalance holds the balance for a single chain.
 type ChainBalance struct {
-	ChainID       string         `json:"chainId"`
+	ChainID       FlexibleString `json:"chainId"`
 	ChainName     string         `json:"chainName"`
 	NativeBalance string         `json:"nativeBalance"`
 	Tokens        []TokenBalance `json:"tokens"`
