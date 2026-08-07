@@ -1,10 +1,12 @@
 package agentic_test
 
 import (
-	"encoding/json"
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/keeperhub/cli/internal/agentic"
 	"github.com/stretchr/testify/assert"
@@ -75,16 +77,6 @@ func TestLoad_MissingFileIsNotConfigured(t *testing.T) {
 	assert.ErrorIs(t, err, agentic.ErrNotConfigured)
 }
 
-// A file present but missing its credential is the same state as no wallet,
-// not a usable one, so it must not reach the signing path.
-func TestLoad_IncompleteConfigIsNotConfigured(t *testing.T) {
-	writeWallet(t, `{"subOrgId":"sub_abc123","walletAddress":"0xabc"}`)
-
-	_, err := agentic.Load()
-
-	assert.ErrorIs(t, err, agentic.ErrNotConfigured)
-}
-
 func TestLoad_MalformedConfigReportsAnError(t *testing.T) {
 	writeWallet(t, `not json`)
 
@@ -105,11 +97,75 @@ func TestLoad_ErrorNeverCarriesTheSecret(t *testing.T) {
 	assert.NotContains(t, err.Error(), fixtureSecret)
 }
 
-func TestConfig_SecretIsNotInTheJSONRoundTrip(t *testing.T) {
-	// Guards against the config being logged wholesale somewhere: if the field
-	// ever needs redacting, this is where that decision gets recorded.
-	cfg := agentic.Config{SubOrgID: "sub_abc123", HMACSecret: fixtureSecret}
-	out, err := json.Marshal(cfg)
+func TestConfig_StringRedactsTheSecret(t *testing.T) {
+	cfg := agentic.Config{
+		SubOrgID:      "sub_abc123",
+		WalletAddress: "0xabc",
+		HMACSecret:    fixtureSecret,
+	}
+
+	rendered := fmt.Sprintf("%v", cfg)
+
+	assert.NotContains(t, rendered, fixtureSecret)
+	assert.Contains(t, rendered, "redacted")
+	assert.Contains(t, rendered, "sub_abc123")
+}
+
+// An unset secret must not read as "redacted", which would hide the fact that
+// the config never carried one.
+func TestConfig_StringDistinguishesAnUnsetSecret(t *testing.T) {
+	rendered := fmt.Sprintf("%v", agentic.Config{SubOrgID: "sub_abc123"})
+
+	assert.Contains(t, rendered, "unset")
+}
+
+func TestLoad_IncompleteConfigIsDistinctFromAbsent(t *testing.T) {
+	writeWallet(t, `{"subOrgId":"sub_abc123","walletAddress":"0xabc"}`)
+
+	_, err := agentic.Load()
+
+	assert.ErrorIs(t, err, agentic.ErrIncompleteConfig)
+	assert.NotErrorIs(t, err, agentic.ErrNotConfigured)
+}
+
+// The signed path comes from the request, so a host carrying a path prefix
+// signs what it actually sends rather than a hard-coded constant.
+func TestSignRequest_SignsThePathItSends(t *testing.T) {
+	cfg := agentic.Config{SubOrgID: fixtureSubOrg, HMACSecret: fixtureSecret}
+	req, err := http.NewRequest(http.MethodGet, "https://example.com/kh"+fixturePath, nil)
 	require.NoError(t, err)
-	assert.Contains(t, string(out), "sub_abc123")
+
+	agentic.SignRequest(req, cfg, "", time.Unix(fixtureTimestamp, 0))
+
+	want := agentic.Sign(
+		fixtureSecret, http.MethodGet, "/kh"+fixturePath, fixtureSubOrg, "", fixtureTimestamp,
+	)
+	assert.Equal(t, want, req.Header.Get(agentic.HeaderSignature))
+	assert.NotEqual(t, fixtureSignature, req.Header.Get(agentic.HeaderSignature))
+	assert.Equal(t, fixtureSubOrg, req.Header.Get(agentic.HeaderSubOrg))
+}
+
+func TestSignRequest_MatchesTheUnprefixedFixture(t *testing.T) {
+	cfg := agentic.Config{SubOrgID: fixtureSubOrg, HMACSecret: fixtureSecret}
+	req, err := http.NewRequest(http.MethodGet, "https://example.com"+fixturePath, nil)
+	require.NoError(t, err)
+
+	agentic.SignRequest(req, cfg, "", time.Unix(fixtureTimestamp, 0))
+
+	assert.Equal(t, fixtureSignature, req.Header.Get(agentic.HeaderSignature))
+}
+
+// The secret must never reach the headers in any form other than the digest.
+func TestSignRequest_NeverSendsTheSecret(t *testing.T) {
+	cfg := agentic.Config{SubOrgID: fixtureSubOrg, HMACSecret: fixtureSecret}
+	req, err := http.NewRequest(http.MethodGet, "https://example.com"+fixturePath, nil)
+	require.NoError(t, err)
+
+	agentic.SignRequest(req, cfg, "", time.Unix(fixtureTimestamp, 0))
+
+	for _, values := range req.Header {
+		for _, v := range values {
+			assert.NotContains(t, v, fixtureSecret)
+		}
+	}
 }

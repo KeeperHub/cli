@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -290,7 +289,7 @@ func checkWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 			// Direct Execution answers 422 WALLET_NOT_CONFIGURED without one,
 			// so say where it comes from rather than only that it is absent.
 			return CheckResult{
-				Status:  "warn",
+				Status: "warn",
 				// Provisioning is session-only, so there is no endpoint worth
 				// naming here: an agent cannot call it.
 				Message: "no wallet configured (create one in Settings)",
@@ -492,11 +491,16 @@ const agenticCreditPath = "/api/agentic-wallet/credit"
 // wallet held locally. The secret is never printed, logged, or sent.
 func checkAgenticWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	cfg, err := agentic.Load()
-	if errors.Is(err, agentic.ErrNotConfigured) {
-		// Most installs never provision one, so this is informational.
-		return CheckResult{Status: "warn", Message: "not configured (kh wallet add)"}
-	}
-	if err != nil {
+	switch {
+	case errors.Is(err, agentic.ErrNotConfigured):
+		// Most installs never provision one. Reporting warn here would put a
+		// permanent warning on nearly every run and devalue the level for the
+		// checks that mean something, so this follows checkSpendCap's handling
+		// of billing-not-enabled.
+		return CheckResult{Status: "pass", Message: "not configured (kh wallet add)"}
+	case errors.Is(err, agentic.ErrIncompleteConfig):
+		return CheckResult{Status: "warn", Message: "~/.keeperhub/wallet.json is present but incomplete"}
+	case err != nil:
 		return CheckResult{Status: "warn", Message: "could not read local wallet config"}
 	}
 
@@ -509,21 +513,16 @@ func checkAgenticWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 		return CheckResult{Status: "warn", Message: "could not check agentic wallet"}
 	}
 
-	url := khhttp.BuildBaseURL(host) + agenticCreditPath
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(
+		ctx, http.MethodGet, khhttp.BuildBaseURL(host)+agenticCreditPath, nil,
+	)
 	if err != nil {
 		return CheckResult{Status: "warn", Message: "could not check agentic wallet"}
 	}
 	khhttp.ApplyHostHeaders(req, host)
-
 	// A GET signs over an empty body. The platform rejects a timestamp more
 	// than five minutes from its own clock.
-	timestamp := time.Now().Unix()
-	req.Header.Set(agentic.HeaderSubOrg, cfg.SubOrgID)
-	req.Header.Set(agentic.HeaderTimestamp, strconv.FormatInt(timestamp, 10))
-	req.Header.Set(agentic.HeaderSignature, agentic.Sign(
-		cfg.HMACSecret, http.MethodGet, agenticCreditPath, cfg.SubOrgID, "", timestamp,
-	))
+	agentic.SignRequest(req, cfg, "", time.Now())
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -536,25 +535,48 @@ func checkAgenticWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		var payload struct {
-			Amount   float64 `json:"amount"`
-			Currency string  `json:"currency"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-			return CheckResult{Status: "warn", Message: "could not parse credit response"}
-		}
-		return CheckResult{
-			Status: "pass",
-			Message: fmt.Sprintf("%s, %.2f %s credit",
-				abbreviateAddr(cfg.WalletAddress), payload.Amount, payload.Currency),
-		}
+		return agenticCreditResult(resp, cfg)
 	case http.StatusUnauthorized:
-		// The signature did not verify. Rotation is the usual cause: the
-		// platform issued a new secret and this file still holds the old one.
+		// The signature did not verify against any active secret.
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return CheckResult{Status: "warn", Message: "rejected by the platform (secret may have been rotated)"}
+	case http.StatusNotFound:
+		// The platform has no secrets for this sub-org at all: the wallet was
+		// deleted, rotated past its grace window, or belongs to another host.
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return CheckResult{Status: "warn", Message: "unknown to this host (check --host, or run kh wallet add)"}
 	default:
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return CheckResult{Status: "warn", Message: fmt.Sprintf("could not check agentic wallet (HTTP %d)", resp.StatusCode)}
+	}
+}
+
+// agenticCreditResult renders a 200 from the credit endpoint.
+//
+// `amount` is a decimal string, not a number: the platform builds it with
+// toFixed(2). Decoding it as a float silently fails on every real response.
+func agenticCreditResult(resp *http.Response, cfg agentic.Config) CheckResult {
+	var payload struct {
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return CheckResult{Status: "warn", Message: "could not parse credit response"}
+	}
+	// A 200 carrying neither field is not this endpoint: a proxy default
+	// handler or an SSO interstitial would otherwise render as a healthy
+	// wallet with zero credit, which reads as "out of funds" rather than
+	// "that was not the credit endpoint".
+	if payload.Amount == "" || payload.Currency == "" {
+		return CheckResult{Status: "warn", Message: "unexpected credit response shape"}
+	}
+
+	where := abbreviateAddr(cfg.WalletAddress)
+	if where == "" {
+		where = cfg.SubOrgID
+	}
+	return CheckResult{
+		Status:  "pass",
+		Message: fmt.Sprintf("%s, %s %s credit", where, payload.Amount, payload.Currency),
 	}
 }

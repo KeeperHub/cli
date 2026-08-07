@@ -43,6 +43,7 @@ func newDoctorFactory(ios *iostreams.IOStreams, svr *httptest.Server) *cmdutil.F
 // all 6 check names appear in output and the command exits 0.
 func TestDoctorCmd_AllPass(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -84,6 +85,7 @@ func TestDoctorCmd_AllPass(t *testing.T) {
 // TestDoctorCmd_OneFail verifies that a failing check causes a non-zero exit.
 func TestDoctorCmd_OneFail(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -120,6 +122,7 @@ func TestDoctorCmd_OneFail(t *testing.T) {
 // TestDoctorCmd_WarnOnly verifies that warnings alone yield exit 0.
 func TestDoctorCmd_WarnOnly(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -159,6 +162,7 @@ func TestDoctorCmd_WarnOnly(t *testing.T) {
 // TestDoctorCmd_JSON verifies --json outputs a JSON array with exactly 6 objects.
 func TestDoctorCmd_JSON(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -204,6 +208,7 @@ func TestDoctorCmd_Timeout(t *testing.T) {
 		t.Skip("skipping timeout test in short mode")
 	}
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -242,6 +247,7 @@ func TestDoctorCmd_Timeout(t *testing.T) {
 // TestDoctorCmd_Output verifies all 6 check names appear in non-JSON output.
 func TestDoctorCmd_Output(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -275,6 +281,7 @@ func TestDoctorCmd_NoLocalJSONFlag(t *testing.T) {
 // TestDoctorCmd_ExitCodeOnFail verifies SilentError is returned on [fail] checks.
 func TestDoctorCmd_ExitCodeOnFail(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -329,6 +336,12 @@ func walletServer(t *testing.T, userBody string) *httptest.Server {
 func runDoctor(t *testing.T, svr *httptest.Server) string {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// HOME too: the agentic check resolves ~/.keeperhub/wallet.json through
+	// os.UserHomeDir, so without this the suite reads a real credential off the
+	// developer's machine and signs a live request with it.
+	if os.Getenv("KH_TEST_KEEP_HOME") == "" {
+		t.Setenv("HOME", t.TempDir())
+	}
 	ios, outBuf, _, _ := iostreams.Test()
 	tc := doctor.NewTestableCmd(newDoctorFactory(ios, svr))
 	_ = tc.Execute([]string{})
@@ -377,6 +390,7 @@ func agenticWallet(t *testing.T) (secret, subOrg, addr string) {
 	secret, subOrg, addr = "s3cr3t-test-key", "sub_abc123", "0xABCD1234EF567890ABCD1234EF567890ABCD1234"
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("KH_TEST_KEEP_HOME", "1")
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".keeperhub"), 0o700))
 	body := `{"subOrgId":"` + subOrg + `","walletAddress":"` + addr + `","hmacSecret":"` + secret + `"}`
 	require.NoError(t, os.WriteFile(filepath.Join(home, ".keeperhub", "wallet.json"), []byte(body), 0o600))
@@ -420,7 +434,7 @@ func verifyingServer(t *testing.T, secret, subOrg string) *httptest.Server {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"amount":12.5,"currency":"USD","subOrgId":"` + subOrg + `"}`))
+		_, _ = w.Write([]byte(`{"amount":"12.50","currency":"USD","subOrgId":"` + subOrg + `"}`))
 	}))
 }
 
@@ -466,4 +480,67 @@ func TestDoctorCmd_AgenticWalletNeverPrintsTheSecret(t *testing.T) {
 	out := runDoctor(t, svr)
 
 	assert.NotContains(t, out, secret)
+}
+
+// The platform builds `amount` with toFixed(2), so it is a JSON string. A
+// float64 field decodes it as an error and the check silently degrades to
+// "could not parse", which is how this shipped broken the first time.
+func TestDoctorCmd_AgenticCreditAmountIsAString(t *testing.T) {
+	secret, subOrg, _ := agenticWallet(t)
+	svr := verifyingServer(t, secret, subOrg)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.NotContains(t, out, "could not parse credit response")
+	assert.Contains(t, out, "12.50 USD credit")
+}
+
+// A 200 that is not the credit endpoint must not render as a funded wallet
+// with zero balance.
+func TestDoctorCmd_AgenticUnexpectedBodyIsNotAPass(t *testing.T) {
+	secret, subOrg, _ := agenticWallet(t)
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer svr.Close()
+	_ = secret
+	_ = subOrg
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "unexpected credit response shape")
+	assert.NotContains(t, out, "0.00")
+}
+
+func TestDoctorCmd_AgenticUnknownSubOrgIsActionable(t *testing.T) {
+	agenticWallet(t)
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/agentic-wallet/credit" {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"Unknown sub-org","code":"WALLET_NOT_FOUND"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "unknown to this host")
+}
+
+// Absent is the normal state on most installs, so it must not warn.
+func TestDoctorCmd_AgenticNotConfiguredIsNotAWarning(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	svr := walletServer(t, `{"walletAddress":"0xABC"}`)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "[pass] Agentic Wallet: not configured")
 }
