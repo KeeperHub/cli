@@ -238,7 +238,13 @@ func checkAPI(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	return CheckResult{Status: "pass", Message: fmt.Sprintf("reachable (%dms)", latency.Milliseconds())}
 }
 
-// checkWallet checks whether the user's wallet is connected.
+// checkWallet reports whether the organization has a wallet configured.
+//
+// It reads GET /api/user, which answers with walletAddress set or null and
+// authenticates with either a session or an API key. The balances endpoint
+// also carries the address, but only alongside a balance sweep of every
+// enabled chain, which is far more work than this question needs and answers
+// 404 rather than a null when no wallet exists.
 func checkWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	host, err := getHost(f)
 	if err != nil {
@@ -250,7 +256,7 @@ func checkWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 		return CheckResult{Status: "warn", Message: "could not check wallet"}
 	}
 
-	url := khhttp.BuildBaseURL(host) + "/api/user/wallet/balances"
+	url := khhttp.BuildBaseURL(host) + "/api/user"
 	resp, err := doGet(ctx, client, host, url)
 	if err != nil {
 		if isContextTimeout(err) {
@@ -264,14 +270,21 @@ func checkWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
 	case http.StatusUnauthorized, http.StatusForbidden:
 		return CheckResult{Status: "warn", Message: "requires authentication"}
 	case http.StatusOK:
+		// Field name must stay in step with the API: an unknown key decodes to
+		// the zero value, which reads here as "no wallet".
 		var payload struct {
-			Address string `json:"address"`
+			Address string `json:"walletAddress"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 			return CheckResult{Status: "warn", Message: "could not parse wallet response"}
 		}
 		if payload.Address == "" {
-			return CheckResult{Status: "warn", Message: "no wallet connected"}
+			// Direct Execution answers 422 WALLET_NOT_CONFIGURED without one,
+			// so say where it comes from rather than only that it is absent.
+			return CheckResult{
+				Status:  "warn",
+				Message: "no wallet configured (create one in Settings, or POST /api/integrations/wallet)",
+			}
 		}
 		short := abbreviateAddr(payload.Address)
 		return CheckResult{Status: "pass", Message: fmt.Sprintf("connected (%s)", short)}

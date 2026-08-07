@@ -20,14 +20,14 @@ import (
 func newDoctorFactory(ios *iostreams.IOStreams, svr *httptest.Server) *cmdutil.Factory {
 	return &cmdutil.Factory{
 		AppVersion: "1.2.3",
-		IOStreams:   ios,
+		IOStreams:  ios,
 		Config: func() (config.Config, error) {
 			return config.Config{DefaultHost: svr.URL}, nil
 		},
 		HTTPClient: func() (*khhttp.Client, error) {
 			return khhttp.NewClient(khhttp.ClientOptions{
 				AppVersion: "1.2.3",
-				IOStreams:   ios,
+				IOStreams:  ios,
 			}), nil
 		},
 	}
@@ -43,9 +43,9 @@ func TestDoctorCmd_AllPass(t *testing.T) {
 		case "/api/health":
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
-		case "/api/user/wallet/balances":
+		case "/api/user":
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"address":"0xABCD1234","balances":[]}`))
+			_, _ = w.Write([]byte(`{"id":"usr_1","name":"Dev","email":"dev@example.com","image":null,"isAnonymous":false,"providerId":null,"walletAddress":"0xABCD1234EF567890ABCD1234EF567890ABCD1234"}`))
 		case "/api/billing/subscription":
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"limits":{"spendCap":100}}`))
@@ -86,7 +86,7 @@ func TestDoctorCmd_OneFail(t *testing.T) {
 			// 500 -> API check reports [fail]
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(`{"error":"service unavailable"}`))
-		case "/api/user/wallet/balances":
+		case "/api/user":
 			w.WriteHeader(http.StatusUnauthorized)
 		case "/api/billing/subscription":
 			w.WriteHeader(http.StatusNotFound)
@@ -121,7 +121,7 @@ func TestDoctorCmd_WarnOnly(t *testing.T) {
 		case "/api/health":
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
-		case "/api/user/wallet/balances":
+		case "/api/user":
 			// 401 -> wallet warns, not fails
 			w.WriteHeader(http.StatusUnauthorized)
 		case "/api/billing/subscription":
@@ -160,9 +160,9 @@ func TestDoctorCmd_JSON(t *testing.T) {
 		case "/api/health":
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
-		case "/api/user/wallet/balances":
+		case "/api/user":
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"address":"0xDEAD","balances":[]}`))
+			_, _ = w.Write([]byte(`{"id":"usr_1","name":"Dev","email":"dev@example.com","image":null,"isAnonymous":false,"providerId":null,"walletAddress":"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"}`))
 		case "/api/billing/subscription":
 			w.WriteHeader(http.StatusNotFound)
 		case "/api/chains":
@@ -205,7 +205,7 @@ func TestDoctorCmd_Timeout(t *testing.T) {
 		case "/api/health":
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
-		case "/api/user/wallet/balances":
+		case "/api/user":
 			w.WriteHeader(http.StatusUnauthorized)
 		case "/api/billing/subscription":
 			w.WriteHeader(http.StatusNotFound)
@@ -292,4 +292,74 @@ func TestDoctorCmd_ExitCodeOnFail(t *testing.T) {
 	var silentErr cmdutil.SilentError
 	require.ErrorAs(t, err, &silentErr, "error must be SilentError so root does not double-print")
 	assert.Equal(t, 1, cmdutil.ExitCodeForError(err))
+}
+
+// walletServer serves the endpoints doctor probes, with GET /api/user
+// answering exactly what the API returns for the wallet state under test.
+func walletServer(t *testing.T, userBody string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/user":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(userBody))
+		case "/api/health", "/api/auth/session":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		case "/api/billing/subscription":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"limits":{"spendCap":100}}`))
+		case "/api/chains":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[{"id":1}]`))
+		default:
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+}
+
+func runDoctor(t *testing.T, svr *httptest.Server) string {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	ios, outBuf, _, _ := iostreams.Test()
+	tc := doctor.NewTestableCmd(newDoctorFactory(ios, svr))
+	_ = tc.Execute([]string{})
+	return outBuf.String()
+}
+
+// The check read `address` while the API returns `walletAddress`, so an org
+// with a wallet was reported as having none. The body here is the real
+// response shape, which is what makes this a regression test rather than a
+// restatement of the client's assumption.
+func TestDoctorCmd_WalletConnectedIsReported(t *testing.T) {
+	svr := walletServer(t, `{"id":"usr_1","name":"Dev","email":"dev@example.com","walletAddress":"0xABCD1234EF567890ABCD1234EF567890ABCD1234"}`)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "connected")
+	assert.NotContains(t, out, "no wallet")
+}
+
+func TestDoctorCmd_NullWalletAddressIsActionable(t *testing.T) {
+	svr := walletServer(t, `{"id":"usr_1","name":"Dev","email":"dev@example.com","walletAddress":null}`)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "no wallet configured")
+	assert.Contains(t, out, "Settings")
+}
+
+// A body carrying only the pre-fix key must not read as connected, so the
+// wrong field name cannot quietly come back.
+func TestDoctorCmd_LegacyAddressKeyIsNotAccepted(t *testing.T) {
+	svr := walletServer(t, `{"address":"0xABCD1234EF567890ABCD1234EF567890ABCD1234"}`)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "no wallet configured")
 }
