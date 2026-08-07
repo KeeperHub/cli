@@ -8,8 +8,6 @@ Print subOrgId and walletAddress from ~/.keeperhub/wallet.json.
 
 Thin wrapper around `npx @keeperhub/wallet info`. Exits non-zero if the config is missing.
 
-**Prerequisite:** Node.js (v18+) and `npx` must be on your `PATH`.
-
 ```
 kh wallet info [flags]
 ```

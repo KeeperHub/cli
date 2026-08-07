@@ -17,6 +17,8 @@ Agentic wallet (thin wrappers around npx @keeperhub/wallet):
   kh w link       link agentic wallet to a KeeperHub account (needs KH_SESSION_COOKIE)
   kh w feedback   submit ERC-8004 feedback for a workflow execution this wallet paid for
 
+Prerequisite for agentic subcommands: Node.js (v18+) and npx must be on your PATH.
+
 ### Examples
 
 ```
