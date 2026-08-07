@@ -1,9 +1,15 @@
 package doctor_test
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -184,7 +190,7 @@ func TestDoctorCmd_JSON(t *testing.T) {
 
 	var results []map[string]interface{}
 	require.NoError(t, json.Unmarshal(outBuf.Bytes(), &results), "output must be valid JSON array")
-	assert.Len(t, results, 6, "should have exactly 6 check results")
+	assert.Len(t, results, 7, "should have exactly 7 check results")
 	for _, r := range results {
 		assert.Contains(t, r, "name", "each result must have 'name'")
 		assert.Contains(t, r, "status", "each result must have 'status'")
@@ -251,7 +257,7 @@ func TestDoctorCmd_Output(t *testing.T) {
 	_ = tc.Execute([]string{})
 
 	out := outBuf.String()
-	for _, name := range []string{"Auth", "API", "Wallet", "Spend Cap", "Chains", "CLI Version"} {
+	for _, name := range []string{"Auth", "API", "Wallet", "Agentic Wallet", "Spend Cap", "Chains", "CLI Version"} {
 		assert.Contains(t, out, name, "output must include check name: %s", name)
 	}
 }
@@ -362,4 +368,102 @@ func TestDoctorCmd_LegacyAddressKeyIsNotAccepted(t *testing.T) {
 	out := runDoctor(t, svr)
 
 	assert.Contains(t, out, "no wallet configured")
+}
+
+// agenticWallet writes a wallet config into an isolated HOME and returns its
+// secret and subOrgId.
+func agenticWallet(t *testing.T) (secret, subOrg, addr string) {
+	t.Helper()
+	secret, subOrg, addr = "s3cr3t-test-key", "sub_abc123", "0xABCD1234EF567890ABCD1234EF567890ABCD1234"
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".keeperhub"), 0o700))
+	body := `{"subOrgId":"` + subOrg + `","walletAddress":"` + addr + `","hmacSecret":"` + secret + `"}`
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".keeperhub", "wallet.json"), []byte(body), 0o600))
+	return secret, subOrg, addr
+}
+
+// verifyingServer recomputes the signature the way the platform does and
+// refuses anything that does not match, so the test fails if the client signs
+// the wrong string rather than merely sending some headers.
+func verifyingServer(t *testing.T, secret, subOrg string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path != "/api/agentic-wallet/credit" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+			return
+		}
+
+		gotSubOrg := r.Header.Get("X-KH-Sub-Org")
+		ts := r.Header.Get("X-KH-Timestamp")
+		gotSig := r.Header.Get("X-KH-Signature")
+
+		bodyDigest := sha256.Sum256(nil)
+		signing := "GET\n/api/agentic-wallet/credit\n" + gotSubOrg + "\n" +
+			hex.EncodeToString(bodyDigest[:]) + "\n" + ts
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write([]byte(signing))
+		want := hex.EncodeToString(mac.Sum(nil))
+
+		if gotSubOrg != subOrg || gotSig != want {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"Invalid signature"}`))
+			return
+		}
+		// The timestamp must be recent, as the platform requires.
+		parsed, err := strconv.ParseInt(ts, 10, 64)
+		if err != nil || time.Since(time.Unix(parsed, 0)) > 5*time.Minute {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"Timestamp outside replay window"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"amount":12.5,"currency":"USD","subOrgId":"` + subOrg + `"}`))
+	}))
+}
+
+func TestDoctorCmd_AgenticWalletSignatureIsAccepted(t *testing.T) {
+	secret, subOrg, _ := agenticWallet(t)
+	svr := verifyingServer(t, secret, subOrg)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "Agentic Wallet")
+	assert.Contains(t, out, "12.50 USD credit")
+}
+
+func TestDoctorCmd_AgenticWalletRejectedSignature(t *testing.T) {
+	_, subOrg, _ := agenticWallet(t)
+	// Server holds a different secret, so a correct client still fails to verify.
+	svr := verifyingServer(t, "a-different-secret", subOrg)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "rejected by the platform")
+}
+
+func TestDoctorCmd_AgenticWalletNotConfigured(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	svr := walletServer(t, `{"walletAddress":"0xABC"}`)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.Contains(t, out, "not configured (kh wallet add)")
+}
+
+// The secret is the wallet's only credential and must not reach stdout, which
+// is the surface an agent will capture and log.
+func TestDoctorCmd_AgenticWalletNeverPrintsTheSecret(t *testing.T) {
+	secret, subOrg, _ := agenticWallet(t)
+	svr := verifyingServer(t, secret, subOrg)
+	defer svr.Close()
+
+	out := runDoctor(t, svr)
+
+	assert.NotContains(t, out, secret)
 }

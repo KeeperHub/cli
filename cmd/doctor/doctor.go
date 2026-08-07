@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/keeperhub/cli/internal/agentic"
 	internalauth "github.com/keeperhub/cli/internal/auth"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/cmdutil"
@@ -42,8 +44,13 @@ func NewDoctorCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases: []string{"doc"},
 		Args:    cobra.NoArgs,
 		Long: `Run diagnostic checks against your KeeperHub configuration and API
-connectivity. Checks auth validity, API reachability, wallet status,
-spend cap, chain availability, and CLI version.
+connectivity. Checks auth validity, API reachability, organization wallet
+status, agentic wallet status and credit, spend cap, chain availability,
+and CLI version.
+
+The agentic wallet check signs its request with the HMAC secret in
+~/.keeperhub/wallet.json, so it reports only the wallet held on this machine.
+The secret is never printed.
 
 See also: kh auth status, kh version`,
 		Example: `  # Run all health checks
@@ -70,6 +77,7 @@ func runDoctor(cmd *cobra.Command, f *cmdutil.Factory) error {
 		{name: "Auth", fn: checkAuth},
 		{name: "API", fn: checkAPI},
 		{name: "Wallet", fn: checkWallet},
+		{name: "Agentic Wallet", fn: checkAgenticWallet},
 		{name: "Spend Cap", fn: checkSpendCap},
 		{name: "Chains", fn: checkChains},
 		{name: "CLI Version", fn: checkCLIVersion},
@@ -466,4 +474,85 @@ func (tc *TestableCmd) Execute(args []string) error {
 	parent.SetOut(tc.ios.Out)
 	parent.SetErr(tc.ios.ErrOut)
 	return parent.Execute()
+}
+
+// agenticCreditPath is the only readable agentic-wallet endpoint. It answers
+// the two things an agent needs: whether the platform still accepts this
+// wallet, and how much credit is left.
+const agenticCreditPath = "/api/agentic-wallet/credit"
+
+// checkAgenticWallet reports the agentic wallet, which is a separate object
+// from the organization wallet and invisible to every other check.
+//
+// It authenticates as the wallet with the HMAC secret in
+// ~/.keeperhub/wallet.json rather than the user's bearer token. The signature
+// proves possession of that specific wallet, so this can only ever report the
+// wallet held locally. The secret is never printed, logged, or sent.
+func checkAgenticWallet(ctx context.Context, f *cmdutil.Factory) CheckResult {
+	cfg, err := agentic.Load()
+	if errors.Is(err, agentic.ErrNotConfigured) {
+		// Most installs never provision one, so this is informational.
+		return CheckResult{Status: "warn", Message: "not configured (kh wallet add)"}
+	}
+	if err != nil {
+		return CheckResult{Status: "warn", Message: "could not read local wallet config"}
+	}
+
+	host, err := getHost(f)
+	if err != nil {
+		return CheckResult{Status: "warn", Message: "could not check agentic wallet"}
+	}
+	client, err := getHTTPClient(f)
+	if err != nil {
+		return CheckResult{Status: "warn", Message: "could not check agentic wallet"}
+	}
+
+	url := khhttp.BuildBaseURL(host) + agenticCreditPath
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return CheckResult{Status: "warn", Message: "could not check agentic wallet"}
+	}
+	khhttp.ApplyHostHeaders(req, host)
+
+	// A GET signs over an empty body. The platform rejects a timestamp more
+	// than five minutes from its own clock.
+	timestamp := time.Now().Unix()
+	req.Header.Set(agentic.HeaderSubOrg, cfg.SubOrgID)
+	req.Header.Set(agentic.HeaderTimestamp, strconv.FormatInt(timestamp, 10))
+	req.Header.Set(agentic.HeaderSignature, agentic.Sign(
+		cfg.HMACSecret, http.MethodGet, agenticCreditPath, cfg.SubOrgID, "", timestamp,
+	))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		if isContextTimeout(err) {
+			return CheckResult{Status: "warn", Message: "agentic wallet check timed out"}
+		}
+		return CheckResult{Status: "warn", Message: "could not check agentic wallet"}
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var payload struct {
+			Amount   float64 `json:"amount"`
+			Currency string  `json:"currency"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+			return CheckResult{Status: "warn", Message: "could not parse credit response"}
+		}
+		return CheckResult{
+			Status: "pass",
+			Message: fmt.Sprintf("%s, %.2f %s credit",
+				abbreviateAddr(cfg.WalletAddress), payload.Amount, payload.Currency),
+		}
+	case http.StatusUnauthorized:
+		// The signature did not verify. Rotation is the usual cause: the
+		// platform issued a new secret and this file still holds the old one.
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return CheckResult{Status: "warn", Message: "rejected by the platform (secret may have been rotated)"}
+	default:
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return CheckResult{Status: "warn", Message: fmt.Sprintf("could not check agentic wallet (HTTP %d)", resp.StatusCode)}
+	}
 }
