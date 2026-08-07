@@ -68,7 +68,7 @@ the chain-config repo is only an input to that seed.`,
 	return cmd
 }
 
-// fetchChains calls /api/chains and caches the result for RPC resolution.
+// fetchChains calls /api/chains for the live chain list.
 func fetchChains(f *cmdutil.Factory, cmd *cobra.Command) ([]rpc.ChainInfo, error) {
 	client, err := f.HTTPClient()
 	if err != nil {
@@ -102,9 +102,6 @@ func fetchChains(f *cmdutil.Factory, cmd *cobra.Command) ([]rpc.ChainInfo, error
 	if err != nil {
 		return nil, fmt.Errorf("reading response body: %w", err)
 	}
-
-	// Cache the chain data for RPC resolution
-	_ = rpc.CacheChains(json.RawMessage(body))
 
 	var chains []rpc.ChainInfo
 	if err := json.Unmarshal(body, &chains); err != nil {
