@@ -10,7 +10,7 @@ Creator wallet (REST):
   kh w balance    show creator-wallet on-chain balances via KeeperHub REST API
   kh w tokens     list supported tokens
 
-Agentic wallet (thin wrappers around npx @keeperhub/wallet):
+Agentic wallet (thin wrappers around npx -p @keeperhub/wallet keeperhub-wallet):
   kh w add        provision a new agentic wallet (no account required)
   kh w info       print agentic subOrgId + walletAddress
   kh w fund       print Coinbase Onramp URL + Tempo deposit address
@@ -26,8 +26,8 @@ Agentic wallet (thin wrappers around npx @keeperhub/wallet):
   # Provision an agentic wallet (npx wrapper):
   kh w add
 
-  # Check balance on the agentic wallet:
-  npx @keeperhub/wallet balance
+  # Check balance on the agentic wallet directly:
+  npx -p @keeperhub/wallet keeperhub-wallet balance
 ```
 
 ### Options
