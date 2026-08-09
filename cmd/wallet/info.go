@@ -13,7 +13,7 @@ func NewInfoCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Print subOrgId and walletAddress from local agentic wallet config",
 		Long: `Print subOrgId and walletAddress from ~/.keeperhub/wallet.json.
 
-Thin wrapper around ` + "`npx @keeperhub/wallet info`" + `. Exits non-zero if the config is missing.`,
+Thin wrapper around ` + "`npx -p @keeperhub/wallet keeperhub-wallet info`" + `. Exits non-zero if the config is missing.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runNpxWallet(f, cmd, "info", nil)

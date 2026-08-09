@@ -13,7 +13,7 @@ func NewFundCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Print Coinbase Onramp URL (Base USDC) and Tempo deposit address for the agentic wallet",
 		Long: `Print a Coinbase Onramp URL for Base USDC funding plus the Tempo deposit address.
 
-Thin wrapper around ` + "`npx @keeperhub/wallet fund`" + `. No HTTP calls, no browser launch --
+Thin wrapper around ` + "`npx -p @keeperhub/wallet keeperhub-wallet fund`" + `. No HTTP calls, no browser launch --
 prints copy-paste instructions only.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
