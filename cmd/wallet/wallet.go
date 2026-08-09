@@ -21,7 +21,9 @@ Agentic wallet (thin wrappers around npx @keeperhub/wallet):
   kh w info       print agentic subOrgId + walletAddress
   kh w fund       print Coinbase Onramp URL + Tempo deposit address
   kh w link       link agentic wallet to a KeeperHub account (needs KH_SESSION_COOKIE)
-  kh w feedback   submit ERC-8004 feedback for a workflow execution this wallet paid for`,
+  kh w feedback   submit ERC-8004 feedback for a workflow execution this wallet paid for
+
+Prerequisite for agentic subcommands: Node.js (v18+) and npx must be on your PATH.`,
 		Example: `  # Creator wallet balance (REST):
   kh w balance
 
