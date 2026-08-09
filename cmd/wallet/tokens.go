@@ -20,11 +20,11 @@ type TokensResponse struct {
 
 // Token holds metadata for a single supported token.
 type Token struct {
-	ChainID      string `json:"chainId"`
-	TokenAddress string `json:"tokenAddress"`
-	Symbol       string `json:"symbol"`
-	Name         string `json:"name"`
-	Decimals     int    `json:"decimals"`
+	ChainID      FlexibleString `json:"chainId"`
+	TokenAddress string         `json:"tokenAddress"`
+	Symbol       string         `json:"symbol"`
+	Name         string         `json:"name"`
+	Decimals     int            `json:"decimals"`
 }
 
 func NewTokensCmd(f *cmdutil.Factory) *cobra.Command {
