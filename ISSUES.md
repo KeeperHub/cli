@@ -44,6 +44,19 @@ made; triage may replace it. If you do not know the fix, *"I do not know; here
 is what I would need to determine"* is a complete plan. Blank is not - a problem
 with no proposed next step puts the whole cost of thinking on whoever reads it.
 
+### Already filed an issue
+
+Nothing here applies retroactively. Issues filed before this page existed are
+triaged on what they contain, and you will never be asked to resubmit one to
+match a template that did not exist when you wrote it.
+
+More generally, and for new issues too: **you will not be asked to restate
+something you have already said.** If triage needs one more fact, it asks for
+that fact, on your issue.
+
+If an issue turns out to hold several problems, we split it and credit you on
+each part.
+
 ## What happens to your issue
 
 | Label | Meaning |
