@@ -1,10 +1,11 @@
 {
+  "rule": "R4",
   "httpStatus": 200,
-  "execution": {
-    "id": "exec_fixture_failed_001",
+  "requireChainEvidence": false,
+  "expect": "failure",
+  "response": {
+    "executionId": "exec_fixture_failed_001",
     "status": "failed",
-    "workflowId": "wf_fixture_001",
-    "error": "action_failed",
-    "completedAt": "2026-08-11T00:01:00.000Z"
+    "error": "simulation reverted: insufficient funds"
   }
 }

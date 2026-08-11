@@ -1,7 +1,9 @@
 package execute
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -14,15 +16,30 @@ import (
 // ExecStatusResponse represents the execution status API response.
 // Shared by transfer, contract-call and status commands.
 type ExecStatusResponse struct {
-	ExecutionID     string  `json:"executionId"`
-	Status          string  `json:"status"`
-	Type            string  `json:"type"`
-	TransactionHash *string `json:"transactionHash"`
-	TransactionLink *string `json:"transactionLink"`
-	Result          any     `json:"result"`
-	Error           *string `json:"error"`
-	CreatedAt       string  `json:"createdAt"`
-	CompletedAt     *string `json:"completedAt"`
+	ExecutionID     string        `json:"executionId"`
+	Status          string        `json:"status"`
+	Type            string        `json:"type"`
+	TransactionHash *string       `json:"transactionHash"`
+	TransactionLink *string       `json:"transactionLink"`
+	Result          any           `json:"result"`
+	Error           *string       `json:"error"`
+	CreatedAt       string        `json:"createdAt"`
+	CompletedAt     *string       `json:"completedAt"`
+	Receipts        []ExecReceipt `json:"receipts,omitempty"`
+}
+
+// ExecReceipt is a chain-re-fetched proof entry attached to an execution.
+// A transactionHash alone proves a transaction was submitted; a receipt with
+// verified=true and receiptStatus="success" proves it landed onchain.
+// receiptStatus="reverted" is Failure even when status=completed.
+type ExecReceipt struct {
+	Hash          string  `json:"hash"`
+	ChainID       int64   `json:"chainId"`
+	Verified      bool    `json:"verified"`
+	ReceiptStatus string  `json:"receiptStatus"`
+	BlockNumber   *int64  `json:"blockNumber,omitempty"`
+	GasUsed       *string `json:"gasUsed,omitempty"`
+	VerifiedAt    *string `json:"verifiedAt,omitempty"`
 }
 
 func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
@@ -96,17 +113,17 @@ func renderExecStatus(p *output.Printer, f *cmdutil.Factory, sr *ExecStatusRespo
 		if sr.Error != nil && *sr.Error != "" {
 			tw.AppendRow(table.Row{"Error", *sr.Error})
 		}
+		for i, r := range sr.Receipts {
+			label := fmt.Sprintf("Receipt[%d]", i)
+			tw.AppendRow(table.Row{label, fmt.Sprintf("%s verified=%v status=%s", r.Hash, r.Verified, r.ReceiptStatus)})
+		}
 		tw.Render()
 	}); err != nil {
 		return err
 	}
 
-	if sr.Status == "failed" {
-		msg := fmt.Sprintf("execution %s failed", sr.ExecutionID)
-		if sr.Error != nil && *sr.Error != "" {
-			msg = *sr.Error
-		}
-		return fmt.Errorf("%s", msg)
+	if err := execOutcomeError(sr); err != nil {
+		return err
 	}
 
 	return nil
@@ -122,6 +139,13 @@ func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionI
 		case <-ticker.C:
 			sr, err := fetchExecStatus(client, host, executionID)
 			if err != nil {
+				var apiErr *khhttp.APIError
+				if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+					if isTTY && !p.IsJSON() {
+						fmt.Fprintf(f.IOStreams.Out, "\r%s  not_found", executionID)
+					}
+					continue
+				}
 				return err
 			}
 

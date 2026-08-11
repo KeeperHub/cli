@@ -1,9 +1,12 @@
 {
+  "rule": "R2",
   "httpStatus": 200,
-  "execution": {
-    "id": "exec_fixture_notx_001",
+  "requireChainEvidence": true,
+  "expect": "failure",
+  "response": {
+    "executionId": "exec_fixture_no_tx_001",
     "status": "completed",
-    "workflowId": "wf_fixture_001",
     "completedAt": "2026-08-11T00:01:00.000Z"
-  }
+  },
+  "note": "completed without chain evidence must fail closed when proof is required."
 }

@@ -3,11 +3,14 @@ package execute
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/keeperhub/cli/internal/execrecovery"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
@@ -60,6 +63,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 			tokenAddress, _ := cmd.Flags().GetString("token-address")
 			wait, _ := cmd.Flags().GetBool("wait")
 			timeout, _ := cmd.Flags().GetDuration("timeout")
+			idemKeyFlag, _ := cmd.Flags().GetString("idempotency-key")
 
 			body := transferRequest{
 				Network:          chain,
@@ -78,11 +82,18 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("marshalling request: %w", err)
 			}
 
+			idemKey, err := execrecovery.ResolveIdempotencyKey(idemKeyFlag)
+			if err != nil {
+				return err
+			}
+
 			req, err := client.NewRequest(http.MethodPost, khhttp.BuildBaseURL(host)+"/api/execute/transfer", bytes.NewReader(bodyBytes))
 			if err != nil {
 				return err
 			}
 			req.Header.Set("Content-Type", "application/json")
+			// Set once before Do so go-retryablehttp retries reuse the same key (R3).
+			req.Header.Set(execrecovery.IdempotencyHeader, idemKey)
 
 			resp, err := client.Do(req)
 			if err != nil {
@@ -124,6 +135,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().String("token-address", "", "ERC-20 token contract address")
 	cmd.Flags().Bool("wait", false, "Wait for completion")
 	cmd.Flags().Duration("timeout", 5*time.Minute, "Timeout when using --wait")
+	cmd.Flags().String("idempotency-key", "", "Stable Idempotency-Key for this write intent (auto-generated if empty)")
 
 	_ = cmd.MarkFlagRequired("chain")
 	_ = cmd.MarkFlagRequired("to")
@@ -153,16 +165,28 @@ func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID
 		case <-ticker.C:
 			statusResp, err := fetchExecStatus(client, host, executionID)
 			if err != nil {
+				var apiErr *khhttp.APIError
+				// R6: tolerate cold-start 404 until the wait deadline.
+				if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+					if time.Now().After(deadline) {
+						return fmt.Errorf("timeout after %s: execution %s not found", timeout, executionID)
+					}
+					continue
+				}
 				return err
 			}
 
+			if statusResp.Status == "not_found" {
+				if time.Now().After(deadline) {
+					return fmt.Errorf("timeout after %s: execution %s not found", timeout, executionID)
+				}
+				continue
+			}
+
 			if execTerminalStatuses[statusResp.Status] {
-				if statusResp.Status == "failed" {
-					msg := fmt.Sprintf("execution %s failed", executionID)
-					if statusResp.Error != nil {
-						msg = *statusResp.Error
-					}
-					return fmt.Errorf("%s", msg)
+				if err := execOutcomeError(statusResp); err != nil {
+					_ = printExecStatusResult(p, statusResp)
+					return err
 				}
 				return printExecStatusResult(p, statusResp)
 			}
@@ -192,6 +216,10 @@ func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStat
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, khhttp.NewAPIError(resp)
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, khhttp.NewAPIError(resp)
 	}
@@ -213,6 +241,26 @@ func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
 		if sr.TransactionLink != nil && *sr.TransactionLink != "" {
 			tw.AppendRow(table.Row{"TX Link", *sr.TransactionLink})
 		}
+		for i, r := range sr.Receipts {
+			tw.AppendRow(table.Row{fmt.Sprintf("Receipt[%d]", i), fmt.Sprintf("%s verified=%v status=%s", r.Hash, r.Verified, r.ReceiptStatus)})
+		}
 		tw.Render()
 	})
+}
+
+// execOutcomeError returns a non-nil error for failed / reverted terminal states.
+func execOutcomeError(sr *ExecStatusResponse) error {
+	if sr.Status == "failed" {
+		msg := fmt.Sprintf("execution %s failed", sr.ExecutionID)
+		if sr.Error != nil && *sr.Error != "" {
+			msg = *sr.Error
+		}
+		return fmt.Errorf("%s", msg)
+	}
+	for _, r := range sr.Receipts {
+		if strings.EqualFold(r.ReceiptStatus, "reverted") {
+			return fmt.Errorf("execution %s completed but transaction reverted (%s)", sr.ExecutionID, r.Hash)
+		}
+	}
+	return nil
 }

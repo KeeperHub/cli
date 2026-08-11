@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/keeperhub/cli/internal/execrecovery"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
@@ -61,6 +62,7 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 			abiFile, _ := cmd.Flags().GetString("abi-file")
 			wait, _ := cmd.Flags().GetBool("wait")
 			timeout, _ := cmd.Flags().GetDuration("timeout")
+			idemKeyFlag, _ := cmd.Flags().GetString("idempotency-key")
 
 			reqBody := contractCallRequest{
 				ContractAddress: contract,
@@ -88,11 +90,17 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("marshalling request: %w", err)
 			}
 
+			idemKey, err := execrecovery.ResolveIdempotencyKey(idemKeyFlag)
+			if err != nil {
+				return err
+			}
+
 			req, err := client.NewRequest(http.MethodPost, khhttp.BuildBaseURL(host)+"/api/execute/contract-call", bytes.NewReader(bodyBytes))
 			if err != nil {
 				return err
 			}
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set(execrecovery.IdempotencyHeader, idemKey)
 
 			resp, err := client.Do(req)
 			if err != nil {
@@ -143,6 +151,7 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().String("abi-file", "", "Path to local ABI JSON file")
 	cmd.Flags().Bool("wait", false, "Wait for completion")
 	cmd.Flags().Duration("timeout", 5*time.Minute, "Timeout when using --wait")
+	cmd.Flags().String("idempotency-key", "", "Stable Idempotency-Key for write intents (auto-generated if empty)")
 
 	_ = cmd.MarkFlagRequired("chain")
 	_ = cmd.MarkFlagRequired("contract")

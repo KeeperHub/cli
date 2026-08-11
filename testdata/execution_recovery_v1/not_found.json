@@ -1,7 +1,11 @@
 {
+  "rule": "R4",
   "httpStatus": 404,
-  "error": {
-    "code": "not_found",
-    "message": "execution not found"
-  }
+  "requireChainEvidence": false,
+  "expect": "pending",
+  "response": {
+    "error": "Execution not found",
+    "code": "not_found"
+  },
+  "note": "A single not_found is Pending (R6). Exhausted poll budget is a caller-level Failure."
 }

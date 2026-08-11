@@ -1,10 +1,13 @@
 {
+  "rule": "R2",
   "httpStatus": 200,
-  "execution": {
-    "id": "exec_fixture_ok_001",
+  "requireChainEvidence": true,
+  "expect": "success",
+  "response": {
+    "executionId": "exec_fixture_ok_001",
     "status": "completed",
-    "workflowId": "wf_fixture_001",
     "transactionHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "transactionLink": "https://basescan.org/tx/0x1111111111111111111111111111111111111111111111111111111111111111",
     "receipts": [
       {
         "hash": "0x1111111111111111111111111111111111111111111111111111111111111111",

@@ -70,7 +70,7 @@ jobs:
           echo "Synced $COPIED command pages."
 
           # Sync hand-written guides (add frontmatter for Nextra)
-          for file in quickstart.md concepts.md; do
+          for file in quickstart.md concepts.md execution-recovery.md; do
             TITLE=$(head -1 "$CLI_DOCS/$file" | sed 's/^# //')
 
             # Build the Nextra-compatible version with frontmatter

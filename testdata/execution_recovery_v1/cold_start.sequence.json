@@ -1,0 +1,40 @@
+{
+  "name": "cold_start",
+  "rule": "R6",
+  "steps": [
+    {
+      "httpStatus": 404,
+      "expect": "pending",
+      "response": {
+        "error": "Execution not found",
+        "code": "not_found"
+      }
+    },
+    {
+      "httpStatus": 200,
+      "expect": "pending",
+      "response": {
+        "executionId": "exec_fixture_cold_001",
+        "status": "pending"
+      }
+    },
+    {
+      "httpStatus": 200,
+      "requireChainEvidence": true,
+      "expect": "success",
+      "response": {
+        "executionId": "exec_fixture_cold_001",
+        "status": "completed",
+        "transactionHash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "receipts": [
+          {
+            "hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+            "chainId": 8453,
+            "verified": true,
+            "receiptStatus": "success"
+          }
+        ]
+      }
+    }
+  ]
+}
