@@ -23,32 +23,46 @@ negotiation.
 
 If you are unsure, open the issue.
 
+## Reason, scope, plan
+
+Every issue carries three things. An issue missing any of them cannot be
+answered, only discussed, and discussion is what this policy exists to replace.
+
+**Reason** - why it matters, in evidence. For a bug: the exact command, its full
+output, what you expected, *what told you to expect it*, and what it costs
+someone who hits it. Name the source of the expectation - help text, a docs
+page, a flag name - because that tells us straight away whether the code is
+wrong or the source is.
+
+**Scope** - what this covers and what it does not. Which commands you checked
+and found fine. If the same fault plausibly affects sibling commands, say which.
+Then confirm it is one issue: if any part could be fixed and shipped while
+another stays broken, those are separate issues.
+
+**Plan** - what should happen next. Your proposal, not a commitment we have
+made; triage may replace it. If you do not know the fix, *"I do not know; here
+is what I would need to determine"* is a complete plan. Blank is not - a problem
+with no proposed next step puts the whole cost of thinking on whoever reads it.
+
 ## What happens to your issue
 
 | Label | Meaning |
 |---|---|
 | `needs-triage` | Received, not yet read. Applied automatically. |
-| `accepted` | The problem is real and the proposed approach is sound and correctly scoped. Write the pull request. |
-| `needs-discussion` | Real, but the approach or the scope is not settled. Do not start yet. |
+| `confirmed` | Someone reproduced it. Says nothing yet about whether we will fix it. |
+| `accepted` | Reason, scope and plan all stand. Write the pull request. |
+| `needs-discussion` | Real, but the scope or the plan is not settled. Do not start yet. |
 | `wontfix` / `duplicate` / `invalid` | Closed, with the reason in a comment. |
 
 **`accepted` is the signal to start.** It is what the pull request gate checks
-for. Nothing else on the issue means "go".
+for. Nothing else means "go" - `confirmed` in particular does not.
+
+**`accepted` accepts a specific plan.** If triage keeps your reason and scope but
+replaces your plan, it says so in a comment before applying the label, and that
+comment is the plan. Build against it, not the one you filed.
 
 We aim to triage within two working days. If an issue has sat longer, comment on
 it - that is the fastest way to get it moving.
-
-## What makes an issue answerable
-
-**For a bug**: the exact command, its full output, what you expected, your `kh
-version`, and your OS and architecture. A pasted terminal session settles a
-report faster than any description of one.
-
-**For a change in behaviour**: what you are trying to do that you currently
-cannot, before what to build. If a flag exists that nearly does it, say what it
-falls short on.
-
-**Scope it.** Name what the change touches and what it does not.
 
 ## Should this be one change
 

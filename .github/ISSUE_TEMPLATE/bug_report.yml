@@ -5,8 +5,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        A pasted terminal session settles a report faster than a description of
-        one. Wait for the `accepted` label before writing a fix - see
+        Every issue carries three things: a **reason** it matters, a **scope**
+        it is bounded to, and a **plan** for what happens next. All three are
+        required. The plan is your proposal - triage may replace it, and will
+        say so in a comment before accepting.
+
+        Wait for the `accepted` label before writing a fix. See
         [ISSUES.md](https://github.com/KeeperHub/cli/blob/main/ISSUES.md).
 
   - type: checkboxes
@@ -18,16 +22,19 @@ body:
           required: true
         - label: I am on the latest release, or I checked that `main` still has it.
           required: true
+        - label: This is one problem, not several. (Several means several issues.)
+          required: true
         - label: This is not a security vulnerability (those go through private reporting).
           required: true
 
   - type: textarea
     id: reproduction
     attributes:
-      label: Command and output
+      label: "Reason: command and output"
       description: >-
-        The exact command and its full output. Redact keys and addresses you do
-        not want public - but keep the shape of what was redacted.
+        The exact command and its full output. A pasted terminal session settles
+        a report faster than any description of one. Redact keys and addresses
+        you do not want public, but keep the shape of what was redacted.
       render: shell
       placeholder: |
         $ kh execute status exec_123 --watch --timeout 5s
@@ -38,10 +45,22 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: What you expected instead
+      label: "Reason: what you expected, and what told you to expect it"
       description: >-
-        If the help text or a docs page told you to expect something else, quote
-        it. `kh execute status --help` output is useful here.
+        Name the source - `--help` output, a docs page, a flag name, an exit
+        code convention. If the source says something different from the code,
+        that immediately tells us which of the two is wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: "Reason: what it costs"
+      description: >-
+        What goes wrong for someone who hits this. A wrong exit code that breaks
+        a CI gate, a command that hangs forever, output a script cannot parse.
+        This is what orders the queue.
     validations:
       required: true
 
@@ -64,10 +83,26 @@ body:
   - type: textarea
     id: scope
     attributes:
-      label: Proposed fix and its scope
+      label: "Scope: what this covers, and what it does not"
       description: >-
-        Optional. If you have a fix in mind, say which commands or packages it
-        touches and what it does not. If it splits into parts that could each
-        ship alone, those are separate issues.
+        The commands affected, and the ones you checked and found fine. If a
+        sibling command plausibly shares the fault, name it - a fix applied to
+        one command and not its siblings is a recurring failure. Then confirm
+        this is one problem.
+      placeholder: >-
+        Affects `kh execute status --watch`. Checked `kh execute transfer --wait`
+        - same shape, likely the same fault. `kh workflow list` unaffected.
     validations:
-      required: false
+      required: true
+
+  - type: textarea
+    id: plan
+    attributes:
+      label: "Plan: what should happen next"
+      description: >-
+        Your proposal, which triage may replace. Say whether it changes anything
+        a caller depends on - output format, an exit code, a flag's meaning. If
+        you do not know the fix, say what you would need to determine to choose
+        one. Blank is not a valid answer.
+    validations:
+      required: true
