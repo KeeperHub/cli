@@ -1,0 +1,18 @@
+{
+  "httpStatus": 200,
+  "execution": {
+    "id": "exec_fixture_ok_001",
+    "status": "completed",
+    "workflowId": "wf_fixture_001",
+    "transactionHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "receipts": [
+      {
+        "hash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "chainId": 8453,
+        "verified": true,
+        "receiptStatus": "success"
+      }
+    ],
+    "completedAt": "2026-08-11T00:01:00.000Z"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "httpStatus": 429,
+  "error": {
+    "code": "rate_limited",
+    "message": "too many requests",
+    "retryAfterSeconds": 2
+  }
+}

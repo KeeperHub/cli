@@ -1,0 +1,17 @@
+{
+  "httpStatus": 200,
+  "execution": {
+    "id": "exec_fixture_reverted_001",
+    "status": "completed",
+    "workflowId": "wf_fixture_001",
+    "transactionHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+    "receipts": [
+      {
+        "hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "chainId": 8453,
+        "verified": true,
+        "receiptStatus": "reverted"
+      }
+    ]
+  }
+}

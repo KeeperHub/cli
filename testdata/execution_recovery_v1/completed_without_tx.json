@@ -1,0 +1,9 @@
+{
+  "httpStatus": 200,
+  "execution": {
+    "id": "exec_fixture_notx_001",
+    "status": "completed",
+    "workflowId": "wf_fixture_001",
+    "completedAt": "2026-08-11T00:01:00.000Z"
+  }
+}

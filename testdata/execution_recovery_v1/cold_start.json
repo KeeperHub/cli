@@ -1,0 +1,9 @@
+{
+  "httpStatus": 200,
+  "execution": {
+    "id": "exec_fixture_cold_001",
+    "status": "queued",
+    "workflowId": "wf_fixture_001",
+    "note": "First status read immediately after submit may still be queued; treat as cold start under R6."
+  }
+}
