@@ -76,7 +76,6 @@ See also: kh r st, kh ex transfer, kh ex cc`,
 
 			watch, _ := cmd.Flags().GetBool("watch")
 			requireVerified, _ := cmd.Flags().GetBool("require-verified")
-			timeout, _ := cmd.Flags().GetDuration("timeout")
 
 			p := output.NewPrinter(f.IOStreams, cmd)
 
@@ -88,13 +87,12 @@ See also: kh r st, kh ex transfer, kh ex cc`,
 				return renderExecStatusChecked(p, f, sr, requireVerified)
 			}
 
-			return watchExecStatus(f, client, host, executionID, timeout, requireVerified, p)
+			return watchExecStatus(f, client, host, executionID, requireVerified, p)
 		},
 	}
 
 	cmd.Flags().Bool("watch", false, "Live-update until complete")
 	cmd.Flags().Bool("require-verified", false, "Exit non-zero unless completed with chain-verified success receipts")
-	cmd.Flags().Duration("timeout", 5*time.Minute, "Give up watching after this long")
 
 	return cmd
 }
@@ -180,9 +178,8 @@ func verifyExecReceipts(sr *ExecStatusResponse) error {
 	return nil
 }
 
-func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID string, timeout time.Duration, requireVerified bool, p *output.Printer) error {
+func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID string, requireVerified bool, p *output.Printer) error {
 	isTTY := f.IOStreams.IsTerminal()
-	deadline := time.Now().Add(timeout)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
@@ -204,14 +201,7 @@ func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionI
 				}
 				return renderExecStatusChecked(p, f, sr, requireVerified)
 			}
-
-			if time.Now().After(deadline) {
-				return fmt.Errorf("timeout after %s: execution %s still %s", timeout, executionID, sr.Status)
-			}
 		default:
-			if time.Now().After(deadline) {
-				return fmt.Errorf("timeout after %s: execution %s still not terminal", timeout, executionID)
-			}
 			time.Sleep(50 * time.Millisecond)
 		}
 	}

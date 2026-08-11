@@ -213,34 +213,3 @@ func TestExecStatusCmd_Watch_RequireVerified_PassesOnVerifiedTerminal(t *testing
 		t.Errorf("expected receipt hash in output, got: %q", buf.String())
 	}
 }
-
-func TestExecStatusCmd_Watch_TimeoutExpires(t *testing.T) {
-	srv := serveStatus(t, execute.ExecStatusResponse{
-		ExecutionID: "exec-stuck",
-		Status:      "pending",
-	})
-	defer srv.Close()
-
-	ios, _, _, _ := iostreams.Test()
-	f := newStatusFactory(ios, srv)
-
-	cmd := execute.NewStatusCmd(f)
-	cmd.SetArgs([]string{"exec-stuck", "--watch", "--timeout", "100ms"})
-
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Execute()
-	}()
-
-	select {
-	case err := <-done:
-		if err == nil {
-			t.Fatal("expected timeout error, got nil")
-		}
-		if !strings.Contains(err.Error(), "timeout") {
-			t.Errorf("expected 'timeout' in error, got: %q", err.Error())
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("watch did not respect --timeout; command still running")
-	}
-}
