@@ -1,0 +1,73 @@
+name: Bug report
+description: A command behaves differently from how it is documented or intended.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A pasted terminal session settles a report faster than a description of
+        one. Wait for the `accepted` label before writing a fix - see
+        [ISSUES.md](https://github.com/KeeperHub/cli/blob/main/ISSUES.md).
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before filing
+      options:
+        - label: I searched open and closed issues for this behaviour.
+          required: true
+        - label: I am on the latest release, or I checked that `main` still has it.
+          required: true
+        - label: This is not a security vulnerability (those go through private reporting).
+          required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Command and output
+      description: >-
+        The exact command and its full output. Redact keys and addresses you do
+        not want public - but keep the shape of what was redacted.
+      render: shell
+      placeholder: |
+        $ kh execute status exec_123 --watch --timeout 5s
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: >-
+        If the help text or a docs page told you to expect something else, quote
+        it. `kh execute status --help` output is useful here.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: kh version
+      description: Output of `kh version`.
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture
+      placeholder: macOS 15 arm64 / Ubuntu 24.04 amd64 / Windows 11 amd64
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed fix and its scope
+      description: >-
+        Optional. If you have a fix in mind, say which commands or packages it
+        touches and what it does not. If it splits into parts that could each
+        ship alone, those are separate issues.
+    validations:
+      required: false
