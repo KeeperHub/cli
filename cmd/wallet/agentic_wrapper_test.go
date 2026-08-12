@@ -39,7 +39,8 @@ func TestNewAddCmd_Help(t *testing.T) {
 	require.NoError(t, err)
 	out := outBuf.String()
 	assert.Contains(t, out, "agentic wallet", "help should describe agentic wallet, not creator wallet")
-	assert.Contains(t, out, "npx @keeperhub/wallet", "help should reference the underlying npm package")
+	assert.Contains(t, out, "@keeperhub/wallet", "help should reference the underlying npm package")
+	assert.Contains(t, out, "keeperhub-wallet", "help should reference the explicit binary name")
 }
 
 func TestNewInfoCmd_Help(t *testing.T) {

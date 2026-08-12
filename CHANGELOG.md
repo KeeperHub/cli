@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.1](https://github.com/KeeperHub/cli/compare/v0.14.0...v0.14.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **wallet:** accept numeric chainId in balance and token responses ([#87](https://github.com/KeeperHub/cli/issues/87)) ([1c6be81](https://github.com/KeeperHub/cli/commit/1c6be81dab8ba5272b4145b367dfd7a040d4fbad))
+* **wallet:** use -p flag so npx resolves the correct binary ([#89](https://github.com/KeeperHub/cli/issues/89)) ([7870571](https://github.com/KeeperHub/cli/commit/78705711cd1dcc58f6c18dfc76410907ebfb86fb))
+
 ## [0.14.0](https://github.com/KeeperHub/cli/compare/v0.13.2...v0.14.0) (2026-08-07)
 
 

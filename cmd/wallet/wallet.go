@@ -16,20 +16,22 @@ Creator wallet (REST):
   kh w balance    show creator-wallet on-chain balances via KeeperHub REST API
   kh w tokens     list supported tokens
 
-Agentic wallet (thin wrappers around npx @keeperhub/wallet):
+Agentic wallet (thin wrappers around npx -p @keeperhub/wallet keeperhub-wallet):
   kh w add        provision a new agentic wallet (no account required)
   kh w info       print agentic subOrgId + walletAddress
   kh w fund       print Coinbase Onramp URL + Tempo deposit address
   kh w link       link agentic wallet to a KeeperHub account (needs KH_SESSION_COOKIE)
-  kh w feedback   submit ERC-8004 feedback for a workflow execution this wallet paid for`,
+  kh w feedback   submit ERC-8004 feedback for a workflow execution this wallet paid for
+
+Prerequisite for agentic subcommands: Node.js (v18+) and npx must be on your PATH.`,
 		Example: `  # Creator wallet balance (REST):
   kh w balance
 
   # Provision an agentic wallet (npx wrapper):
   kh w add
 
-  # Check balance on the agentic wallet:
-  npx @keeperhub/wallet balance`,
+  # Check balance on the agentic wallet directly:
+  npx -p @keeperhub/wallet keeperhub-wallet balance`,
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")

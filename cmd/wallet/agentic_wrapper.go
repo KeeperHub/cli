@@ -40,7 +40,12 @@ func runNpxWallet(f *cmdutil.Factory, cmd *cobra.Command, subcmd string, args []
 	host := cmdutil.ResolveHost(cmd, cfg)
 	baseURL := khhttp.BuildBaseURL(host)
 
-	childArgs := append([]string{"@keeperhub/wallet", subcmd}, args...)
+	// Use -p to name the package explicitly and keeperhub-wallet to name the
+	// binary. Without -p, npx tries to infer the binary from the package name;
+	// @keeperhub/wallet exposes keeperhub-wallet / keeperhub-wallet-hook /
+	// keeperhub-wallet-mcp, so npx cannot pick one and exits "could not
+	// determine executable to run" regardless of whether Node is installed.
+	childArgs := append([]string{"-p", "@keeperhub/wallet", "keeperhub-wallet", subcmd}, args...)
 	child := execCommand("npx", childArgs...)
 	child.Stdin = f.IOStreams.In
 	child.Stdout = f.IOStreams.Out
