@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/keeperhub/cli/internal/config"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/iostreams"
+	"golang.org/x/term"
 )
 
 type deviceCodeResponse struct {
@@ -175,7 +177,33 @@ func checkDeviceToken(ctx context.Context, baseURL, deviceCode string, headers m
 }
 
 // ReadTokenFromStdin reads a token from ios.In, trims whitespace, and returns it.
+// ReadTokenFromStdin reads an API key without echoing it when stdin is a terminal.
+//
+// Piped input is unchanged, so `echo $KEY | kh auth login --with-token` and CI usage keep
+// working exactly as before. What changes is the interactive case: running the command with no
+// pipe used to leave the terminal echoing, so the key appeared on screen and stayed in
+// scrollback. An organisation API key is a bearer credential, and a terminal is a bad place to
+// leave one lying around.
+//
+// Echo suppression is verified rather than assumed. term.ReadPassword tells us whether it could
+// put the terminal into no-echo mode, and if it cannot, this returns an error instead of falling
+// back to a visible read. Failing closed costs the user one message; failing open costs them the
+// key.
 func ReadTokenFromStdin(ios *iostreams.IOStreams) (string, error) {
+	if fd, isTTY := stdinFd(ios); isTTY {
+		fmt.Fprint(ios.ErrOut, "KeeperHub organisation API key: ")
+		data, err := term.ReadPassword(fd)
+		fmt.Fprintln(ios.ErrOut)
+		if err != nil {
+			return "", fmt.Errorf("reading token from terminal: %w", err)
+		}
+		token := strings.TrimSpace(string(data))
+		if token == "" {
+			return "", errors.New("no token provided")
+		}
+		return token, nil
+	}
+
 	data, err := io.ReadAll(ios.In)
 	if err != nil {
 		return "", fmt.Errorf("reading token from stdin: %w", err)
@@ -185,4 +213,16 @@ func ReadTokenFromStdin(ios *iostreams.IOStreams) (string, error) {
 		return "", errors.New("no token provided on stdin")
 	}
 	return token, nil
+}
+
+// stdinFd reports the file descriptor for stdin when it is an interactive terminal. A pipe, a
+// redirect, a heredoc and a test buffer all report false, which is the distinction that matters:
+// any of those means the bytes are not being typed by a person.
+func stdinFd(ios *iostreams.IOStreams) (int, bool) {
+	f, ok := ios.In.(*os.File)
+	if !ok {
+		return 0, false
+	}
+	fd := int(f.Fd())
+	return fd, term.IsTerminal(fd)
 }

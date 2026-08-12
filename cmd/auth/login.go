@@ -55,14 +55,19 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 Prints a URL and a one-time code. Open the URL in any browser (the browser
 does not open automatically — copy the URL from the terminal) and enter the
 code to complete sign-in. Codes expire after 15 minutes.
-Use --with-token to read an API key from stdin for non-interactive automation.
+Use --with-token to supply an API key. In a terminal it is prompted for without
+echo; piped input is read from stdin for non-interactive automation.
 
 See also: kh auth status, kh auth logout`,
 		Example: `  # Log in (device code flow)
   kh auth login
 
-  # Log in with an API key (non-interactive)
-  echo "kh_xxx" | kh auth login --with-token`,
+  # Log in with an API key (prompted, not echoed)
+  kh auth login --with-token
+
+  # Non-interactive, for CI. Prefer a variable over a literal so the key stays
+  # out of shell history.
+  printf '%s' "$KEEPERHUB_API_KEY" | kh auth login --with-token`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hosts, err := config.ReadHosts()
 			if err != nil {
