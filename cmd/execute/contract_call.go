@@ -124,7 +124,7 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 					})
 				}
 
-				if execTerminalStatuses[writeResp.Status] {
+				if execTerminalStatuses[writeResp.Status] && !writeNeedsReconciliation(writeResp.Status, writeResp.TransactionHash) {
 					return printContractCallWriteResult(p, &writeResp)
 				}
 

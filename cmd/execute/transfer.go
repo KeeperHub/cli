@@ -109,7 +109,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 				})
 			}
 
-			if execTerminalStatuses[execResp.Status] {
+			if execTerminalStatuses[execResp.Status] && !writeNeedsReconciliation(execResp.Status, execResp.TransactionHash) {
 				return printTransferResult(p, &execResp)
 			}
 
@@ -145,62 +145,75 @@ func printTransferResult(p *output.Printer, execResp *transferResponse) error {
 
 func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID string, timeout time.Duration, p *output.Printer) error {
 	deadline := time.Now().Add(timeout)
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
 
 	for {
-		select {
-		case <-ticker.C:
-			statusResp, err := fetchExecStatus(client, host, executionID)
-			if err != nil {
-				return err
-			}
+		statusResp, delay, serverSaysTerminal, err := fetchExecStatus(client, host, executionID)
+		if err != nil {
+			return err
+		}
 
-			if execTerminalStatuses[statusResp.Status] {
-				if statusResp.Status == "failed" {
-					msg := fmt.Sprintf("execution %s failed", executionID)
-					if statusResp.Error != nil {
-						msg = *statusResp.Error
-					}
-					return fmt.Errorf("%s", msg)
+		if execTerminalStatuses[statusResp.Status] || serverSaysTerminal {
+			if statusResp.Status == "failed" {
+				msg := fmt.Sprintf("execution %s failed", executionID)
+				if statusResp.Error != nil {
+					msg = *statusResp.Error
 				}
-				return printExecStatusResult(p, statusResp)
+				return fmt.Errorf("%s", msg)
 			}
+			return printExecStatusResult(p, statusResp)
+		}
 
-			if time.Now().After(deadline) {
-				return fmt.Errorf("timeout after %s: execution %s still %s", timeout, executionID, statusResp.Status)
-			}
-		default:
-			if time.Now().After(deadline) {
-				return fmt.Errorf("timeout after %s: execution %s timed out", timeout, executionID)
-			}
-			time.Sleep(50 * time.Millisecond)
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout after %s: execution %s still %s", timeout, executionID, statusResp.Status)
+		}
+
+		// Wait as long as the server asked, but never past the caller's deadline.
+		if remaining := time.Until(deadline); delay > remaining {
+			delay = remaining
+		}
+		if delay > 0 {
+			time.Sleep(delay)
 		}
 	}
 }
 
-func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStatusResponse, error) {
+// fetchExecStatus returns the execution status, the delay the server asked us to wait before
+// polling again, and whether the server declared the execution terminal via a hint of 0.
+func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStatusResponse, time.Duration, bool, error) {
 	url := khhttp.BuildBaseURL(host) + "/api/execute/" + executionID + "/status"
 	req, err := client.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, false, err
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, false, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, khhttp.NewAPIError(resp)
+		return nil, 0, false, khhttp.NewAPIError(resp)
 	}
+
+	delay, serverSaysTerminal := nextPollDelay(resp)
 
 	var sr ExecStatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&sr); err != nil {
-		return nil, fmt.Errorf("decoding status response: %w", err)
+		return nil, 0, false, fmt.Errorf("decoding status response: %w", err)
 	}
-	return &sr, nil
+	return &sr, delay, serverSaysTerminal, nil
+}
+
+// writeNeedsReconciliation reports whether a direct-write response that claims a terminal status
+// is missing the evidence the caller actually needs.
+//
+// A successful /api/execute/contract-call broadcast can return 202 with status "completed" and no
+// transactionHash; the hash only appears on the status endpoint. Treating that response as final
+// means --wait returns "completed" while the caller still has no transaction to verify, which is
+// the one outcome the flag exists to prevent.
+func writeNeedsReconciliation(status string, txHash *string) bool {
+	return status == "completed" && (txHash == nil || *txHash == "")
 }
 
 func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
