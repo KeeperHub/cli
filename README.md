@@ -17,6 +17,17 @@ go install github.com/keeperhub/cli/cmd/kh@latest
 **Binary download:**
 Download from [GitHub Releases](https://github.com/keeperhub/cli/releases).
 
+**Windows:**
+Download `kh_<version>_windows_amd64.zip` from [GitHub Releases](https://github.com/keeperhub/cli/releases), extract it, and add the folder to your `PATH`:
+
+```
+Expand-Archive kh_<version>_windows_amd64.zip -DestinationPath "$env:LOCALAPPDATA\Programs\kh"
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:LOCALAPPDATA\Programs\kh", "User")
+```
+
+Restart your terminal, then run `kh version`. If SmartScreen blocks the first run, use `Unblock-File "$env:LOCALAPPDATA\Programs\kh\kh.exe"`.
+
+
 ## Auth
 
 ```
