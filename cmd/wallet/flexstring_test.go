@@ -47,3 +47,24 @@ func TestFlexibleStringAcceptsBothShapes(t *testing.T) {
 		}
 	}
 }
+
+func TestFlexibleStringMarshalsNumericAsNumber(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{`{"chainId":11155111}`, `11155111`},   // numeric in -> numeric out
+		{`{"chainId":"11155111"}`, `11155111`}, // legacy string in -> numeric out
+		{`{"chainId":"mainnet"}`, `"mainnet"`}, // non-numeric stays a string
+		{`{"chainId":null}`, `""`},             // null -> zero value
+	} {
+		var cb wallet.ChainBalance
+		if err := json.Unmarshal([]byte(tc.in), &cb); err != nil {
+			t.Fatalf("%s: %v", tc.in, err)
+		}
+		got, err := json.Marshal(cb.ChainID)
+		if err != nil {
+			t.Fatalf("%s: marshal: %v", tc.in, err)
+		}
+		if string(got) != tc.want {
+			t.Fatalf("%s: got %s want %s", tc.in, got, tc.want)
+		}
+	}
+}
