@@ -9,14 +9,14 @@ import (
 
 // Fixture is one conformance case loaded from testdata/execution_recovery_v1.
 type Fixture struct {
-	Name                   string          `json:"-"`
-	Rule                   string          `json:"rule"`
-	HTTPStatus             int             `json:"httpStatus"`
-	RequireChainEvidence   bool            `json:"requireChainEvidence"`
-	Expect                 Outcome         `json:"expect"`
-	Response               json.RawMessage `json:"response"`
-	ResponseRaw            string          `json:"responseRaw,omitempty"`
-	Note                   string          `json:"note,omitempty"`
+	Name                 string          `json:"-"`
+	Rule                 string          `json:"rule"`
+	HTTPStatus           int             `json:"httpStatus"`
+	RequireChainEvidence bool            `json:"requireChainEvidence"`
+	Expect               Outcome         `json:"expect"`
+	Response             json.RawMessage `json:"response"`
+	ResponseRaw          string          `json:"responseRaw,omitempty"`
+	Note                 string          `json:"note,omitempty"`
 }
 
 // SequenceStep is one observation in a multi-response cold-start sequence.
