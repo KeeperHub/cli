@@ -59,7 +59,9 @@ See also: kh r st, kh ex transfer, kh ex cc`,
   # Watch until completion
   kh ex st abc123 --watch
 
-  # Gate a script on chain-verified success
+  # Gate a script on chain-verified success. --watch polls until the
+  # execution reaches a terminal status and has no deadline of its own,
+  # so bound it externally when running unattended.
   kh ex st abc123 --watch --require-verified && ./next-step.sh`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			executionID := args[0]
@@ -165,7 +167,7 @@ func verifyExecReceipts(sr *ExecStatusResponse) error {
 		return fmt.Errorf("execution %s is %s, not completed", sr.ExecutionID, sr.Status)
 	}
 	if len(sr.Receipts) == 0 {
-		return fmt.Errorf("execution %s completed but has no receipts: submission is proven, landing is not", sr.ExecutionID)
+		return fmt.Errorf("execution %s completed with no receipts: there is nothing to chain-verify", sr.ExecutionID)
 	}
 	for _, r := range sr.Receipts {
 		if !r.Verified {

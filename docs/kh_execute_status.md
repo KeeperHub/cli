@@ -26,7 +26,9 @@ kh execute status <execution-id> [flags]
   # Watch until completion
   kh ex st abc123 --watch
 
-  # Gate a script on chain-verified success
+  # Gate a script on chain-verified success. --watch polls until the
+  # execution reaches a terminal status and has no deadline of its own,
+  # so bound it externally when running unattended.
   kh ex st abc123 --watch --require-verified && ./next-step.sh
 ```
 
