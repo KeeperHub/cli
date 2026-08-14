@@ -7,6 +7,10 @@ Show the status of an execution
 Show the status of a direct blockchain execution (transfer or contract call).
 Use --watch to poll until the execution reaches a terminal state.
 
+Use --require-verified to fail unless the execution completed AND every
+onchain receipt is chain-verified with receiptStatus "success". A completed
+status without receipts exits non-zero: submitted is not the same as landed.
+
 See also: kh r st, kh ex transfer, kh ex cc
 
 ```
@@ -21,13 +25,17 @@ kh execute status <execution-id> [flags]
 
   # Watch until completion
   kh ex st abc123 --watch
+
+  # Gate a script on chain-verified success
+  kh ex st abc123 --watch --require-verified && ./next-step.sh
 ```
 
 ### Options
 
 ```
-  -h, --help    help for status
-      --watch   Live-update until complete
+  -h, --help               help for status
+      --require-verified   Exit non-zero unless completed with chain-verified success receipts
+      --watch              Live-update until complete
 ```
 
 ### Options inherited from parent commands
