@@ -1,12 +1,10 @@
 package execute
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -87,15 +85,8 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			req, err := client.NewRequest(http.MethodPost, khhttp.BuildBaseURL(host)+"/api/execute/transfer", bytes.NewReader(bodyBytes))
-			if err != nil {
-				return err
-			}
-			req.Header.Set("Content-Type", "application/json")
-			// Set once before Do so go-retryablehttp retries reuse the same key (R3).
-			req.Header.Set(execrecovery.IdempotencyHeader, idemKey)
-
-			resp, err := client.Do(req)
+			deadline := time.Now().Add(timeout)
+			resp, err := postIdempotentJSON(client, khhttp.BuildBaseURL(host)+"/api/execute/transfer", bodyBytes, idemKey, deadline)
 			if err != nil {
 				return err
 			}
@@ -176,13 +167,6 @@ func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID
 				return err
 			}
 
-			if statusResp.Status == "not_found" {
-				if time.Now().After(deadline) {
-					return fmt.Errorf("timeout after %s: execution %s not found", timeout, executionID)
-				}
-				continue
-			}
-
 			if execTerminalStatuses[statusResp.Status] {
 				if err := execOutcomeError(statusResp); err != nil {
 					_ = printExecStatusResult(p, statusResp)
@@ -216,10 +200,6 @@ func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStat
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, khhttp.NewAPIError(resp)
-	}
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, khhttp.NewAPIError(resp)
 	}
@@ -248,7 +228,11 @@ func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
 	})
 }
 
-// execOutcomeError returns a non-nil error for failed / reverted terminal states.
+// execOutcomeError returns a non-nil error for failed terminal states and for
+// any receipt that is not explicitly successful when the run has completed, or
+// for a conclusive on-chain failure (reverted / safe_inner_failure) at any
+// status. not_found / timeout receipts on unconfirmed stay non-terminal: the
+// server treats those as unread, not failed.
 func execOutcomeError(sr *ExecStatusResponse) error {
 	if sr.Status == "failed" {
 		msg := fmt.Sprintf("execution %s failed", sr.ExecutionID)
@@ -258,8 +242,11 @@ func execOutcomeError(sr *ExecStatusResponse) error {
 		return fmt.Errorf("%s", msg)
 	}
 	for _, r := range sr.Receipts {
-		if strings.EqualFold(r.ReceiptStatus, "reverted") {
-			return fmt.Errorf("execution %s completed but transaction reverted (%s)", sr.ExecutionID, r.Hash)
+		if execrecovery.ConclusiveFailedReceipt(r.ReceiptStatus) {
+			return fmt.Errorf("execution %s receipt %s status=%s", sr.ExecutionID, r.Hash, r.ReceiptStatus)
+		}
+		if sr.Status == "completed" && execrecovery.NonSuccessReceipt(r) {
+			return fmt.Errorf("execution %s completed with non-success receipt %s status=%s", sr.ExecutionID, r.Hash, r.ReceiptStatus)
 		}
 	}
 	return nil

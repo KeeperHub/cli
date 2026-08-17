@@ -1,46 +1,23 @@
 package execute
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/keeperhub/cli/internal/execrecovery"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
-// ExecStatusResponse represents the execution status API response.
-// Shared by transfer, contract-call and status commands.
-type ExecStatusResponse struct {
-	ExecutionID     string        `json:"executionId"`
-	Status          string        `json:"status"`
-	Type            string        `json:"type"`
-	TransactionHash *string       `json:"transactionHash"`
-	TransactionLink *string       `json:"transactionLink"`
-	Result          any           `json:"result"`
-	Error           *string       `json:"error"`
-	CreatedAt       string        `json:"createdAt"`
-	CompletedAt     *string       `json:"completedAt"`
-	Receipts        []ExecReceipt `json:"receipts,omitempty"`
-}
+// ExecStatusResponse is the GET /api/execute/{id}/status wire type.
+// Canonical definition: execrecovery.DirectStatus.
+type ExecStatusResponse = execrecovery.DirectStatus
 
-// ExecReceipt is a chain-re-fetched proof entry attached to an execution.
-// A transactionHash alone proves a transaction was submitted; a receipt with
-// verified=true and receiptStatus="success" proves it landed onchain.
-// receiptStatus="reverted" is Failure even when status=completed.
-type ExecReceipt struct {
-	Hash          string  `json:"hash"`
-	ChainID       int64   `json:"chainId"`
-	Verified      bool    `json:"verified"`
-	ReceiptStatus string  `json:"receiptStatus"`
-	BlockNumber   *int64  `json:"blockNumber,omitempty"`
-	GasUsed       *string `json:"gasUsed,omitempty"`
-	VerifiedAt    *string `json:"verifiedAt,omitempty"`
-}
+// ExecReceipt is DirectExecutionReceiptEntry on the wire.
+type ExecReceipt = execrecovery.Receipt
 
 func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
@@ -139,13 +116,6 @@ func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionI
 		case <-ticker.C:
 			sr, err := fetchExecStatus(client, host, executionID)
 			if err != nil {
-				var apiErr *khhttp.APIError
-				if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
-					if isTTY && !p.IsJSON() {
-						fmt.Fprintf(f.IOStreams.Out, "\r%s  not_found", executionID)
-					}
-					continue
-				}
 				return err
 			}
 
@@ -164,4 +134,3 @@ func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionI
 		}
 	}
 }
-

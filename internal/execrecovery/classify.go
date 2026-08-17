@@ -13,29 +13,41 @@ import (
 type Outcome string
 
 const (
-	OutcomePending     Outcome = "pending"
-	OutcomeSuccess     Outcome = "success"
-	OutcomeFailure     Outcome = "failure"
-	OutcomeMalformed   Outcome = "malformed"
-	OutcomeRateLimited Outcome = "rate_limited"
+	OutcomePending      Outcome = "pending"
+	OutcomeSuccess      Outcome = "success"
+	OutcomeFailure      Outcome = "failure"
+	OutcomeMalformed    Outcome = "malformed"
+	OutcomeRateLimited  Outcome = "rate_limited"
+	OutcomeUnrecognized Outcome = "unrecognized"
 )
 
 // Options controls classification strictness.
 type Options struct {
-	// RequireChainEvidence enables R2 strict mode: completed without a
-	// verified successful receipt is Failure, not Success.
+	// RequireChainEvidence is a classifier-only option used by fixtures.
+	// The shipped CLI wait paths do not set it. When true, completed
+	// without a verified successful receipt is Failure.
 	RequireChainEvidence bool
 }
 
-// Receipt is a chain-re-fetched proof entry (direct-execution status API).
+// Receipt is GET /api/execute/{id}/status receipts[]
+// (DirectExecutionReceiptEntry in KeeperHub/keeperhub).
+//
+// receiptStatus values from lib/web3/verify-receipt.ts:
+// success | reverted | not_found | timeout | safe_inner_failure.
+// verifiedAt is required on the server type. chainId is optional.
 type Receipt struct {
-	Hash          string `json:"hash"`
-	ChainID       int64  `json:"chainId"`
-	Verified      bool   `json:"verified"`
-	ReceiptStatus string `json:"receiptStatus"`
+	Hash          string  `json:"hash"`
+	ChainID       *int    `json:"chainId,omitempty"`
+	Network       string  `json:"network,omitempty"`
+	Verified      bool    `json:"verified"`
+	ReceiptStatus string  `json:"receiptStatus"`
+	BlockNumber   *int64  `json:"blockNumber,omitempty"`
+	GasUsed       *string `json:"gasUsed,omitempty"`
+	VerifiedAt    string  `json:"verifiedAt"`
 }
 
 // DirectStatus is the flat wire shape of GET /api/execute/{id}/status.
+// Canonical type: cmd/execute aliases this as ExecStatusResponse.
 type DirectStatus struct {
 	ExecutionID     string    `json:"executionId"`
 	Status          string    `json:"status"`
@@ -57,22 +69,25 @@ type Sample struct {
 
 // Classify maps one status observation to an Outcome.
 //
-// Vocabulary note: direct-execution statuses are pending|running|completed|failed
-// (and transport-level not_found). Workflow run statuses (success|error|cancelled)
+// Direct-execution statuses are pending|running|unconfirmed|completed|failed
+// (app/api/execute/_lib/types.ts). Workflow run statuses (success|error|cancelled)
 // belong to a different API and must not be fed here — see Vocabulary().
+//
+// An unknown future status is OutcomeUnrecognized (never success, never
+// malformed) so a server addition does not look like a corrupt body.
 func Classify(sample Sample, opts Options) (Outcome, string) {
 	if sample.HTTPStatus == http.StatusTooManyRequests {
 		return OutcomeRateLimited, "HTTP 429"
 	}
 
 	// Cold-start / missing: callers may poll again (R6). Terminal failure is a
-	// poll-budget decision, not Classify's.
+	// poll-budget decision, not Classify's. The status endpoint answers 404
+	// with {"error":"Execution not found"} and no status field.
 	if sample.HTTPStatus == http.StatusNotFound {
-		return OutcomePending, "not_found"
+		return OutcomePending, "http 404"
 	}
 
 	if sample.HTTPStatus != 0 && sample.HTTPStatus != http.StatusOK && sample.HTTPStatus != http.StatusAccepted {
-		// Non-404 errors are failures for a status read.
 		if sample.HTTPStatus >= 400 {
 			return OutcomeFailure, fmt.Sprintf("HTTP %d", sample.HTTPStatus)
 		}
@@ -94,27 +109,24 @@ func Classify(sample Sample, opts Options) (Outcome, string) {
 
 	status := strings.ToLower(strings.TrimSpace(st.Status))
 	if status == "" {
-		// Unrecognised schema: valid JSON but no status field.
 		return OutcomeMalformed, "missing status field"
 	}
 
 	switch status {
-	case "pending", "running", "queued", "unconfirmed":
+	case "pending", "running", "unconfirmed":
 		return OutcomePending, status
-	case "not_found":
-		return OutcomePending, status
-	case "failed", "error", "cancelled":
+	case "failed":
 		return OutcomeFailure, status
-	case "completed", "success":
+	case "completed":
 		return classifyCompleted(st, opts)
 	default:
-		return OutcomeMalformed, "unrecognised status: " + status
+		return OutcomeUnrecognized, "unrecognized status: " + status
 	}
 }
 
 func classifyCompleted(st DirectStatus, opts Options) (Outcome, string) {
-	if hasRevertedReceipt(st.Receipts) {
-		return OutcomeFailure, "receiptStatus=reverted"
+	if r := FirstBlockingReceipt(st.Receipts); r != nil {
+		return OutcomeFailure, "receiptStatus=" + r.ReceiptStatus
 	}
 
 	if hasVerifiedSuccess(st.Receipts) {
@@ -131,18 +143,36 @@ func classifyCompleted(st DirectStatus, opts Options) (Outcome, string) {
 		return OutcomeFailure, "no verified successful receipt"
 	}
 
-	// Compatible default: completed without receipts is still Success for
-	// callers that have not opted into R2 strict mode (see --require-verified).
+	// Compatible default: completed without receipts is still Success.
+	// The shipped CLI does not set RequireChainEvidence.
 	return OutcomeSuccess, "completed"
 }
 
-func hasRevertedReceipt(receipts []Receipt) bool {
-	for _, r := range receipts {
-		if strings.EqualFold(r.ReceiptStatus, "reverted") {
-			return true
+// ConclusiveFailedReceipt reports a chain-answered failure
+// (lib/web3/verify-receipt.ts CONCLUSIVE_STATUSES minus success).
+func ConclusiveFailedReceipt(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "reverted", "safe_inner_failure":
+		return true
+	default:
+		return false
+	}
+}
+
+// NonSuccessReceipt is true when a receipt exists and is not explicitly successful.
+func NonSuccessReceipt(r Receipt) bool {
+	s := strings.ToLower(strings.TrimSpace(r.ReceiptStatus))
+	return s != "" && s != "success"
+}
+
+// FirstBlockingReceipt returns the first receipt that must not be treated as success.
+func FirstBlockingReceipt(receipts []Receipt) *Receipt {
+	for i := range receipts {
+		if NonSuccessReceipt(receipts[i]) {
+			return &receipts[i]
 		}
 	}
-	return false
+	return nil
 }
 
 func hasVerifiedSuccess(receipts []Receipt) bool {
@@ -152,9 +182,4 @@ func hasVerifiedSuccess(receipts []Receipt) bool {
 		}
 	}
 	return false
-}
-
-// HasRevertedReceipt reports whether any receipt is an onchain revert.
-func HasRevertedReceipt(receipts []Receipt) bool {
-	return hasRevertedReceipt(receipts)
 }

@@ -1,7 +1,6 @@
 package execute
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -95,14 +94,8 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			req, err := client.NewRequest(http.MethodPost, khhttp.BuildBaseURL(host)+"/api/execute/contract-call", bytes.NewReader(bodyBytes))
-			if err != nil {
-				return err
-			}
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set(execrecovery.IdempotencyHeader, idemKey)
-
-			resp, err := client.Do(req)
+			deadline := time.Now().Add(timeout)
+			resp, err := postIdempotentJSON(client, khhttp.BuildBaseURL(host)+"/api/execute/contract-call", bodyBytes, idemKey, deadline)
 			if err != nil {
 				return err
 			}

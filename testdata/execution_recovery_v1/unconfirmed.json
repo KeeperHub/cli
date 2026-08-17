@@ -1,4 +1,6 @@
 {
+  "version": 1,
+  "kind": "observed",
   "rule": "R1",
   "httpStatus": 200,
   "requireChainEvidence": false,
@@ -7,7 +9,15 @@
     "executionId": "exec_fixture_unconfirmed_001",
     "status": "unconfirmed",
     "transactionHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+    "receipts": [
+      {
+        "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "verified": false,
+        "receiptStatus": "not_found",
+        "verifiedAt": "2026-08-11T00:00:30.000Z"
+      }
+    ],
     "createdAt": "2026-08-11T00:00:00.000Z"
   },
-  "note": "Broadcast but not yet confirmed — poll same executionId; do not resubmit."
+  "note": "Broadcast but the receipt was unreadable. Server settles unconfirmed, not failed. Poll the same executionId; do not resubmit."
 }

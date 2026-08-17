@@ -5,11 +5,29 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+)
+
+const FixtureVersion = 1
+
+// Kind labels how a fixture relates to production.
+//
+// observed: a response the current handler can emit.
+// defensive: a client-side invariant against a body KEEP-966 makes unreachable.
+// classifier: exercises a classifier option the shipped CLI does not set.
+type Kind string
+
+const (
+	KindObserved   Kind = "observed"
+	KindDefensive  Kind = "defensive"
+	KindClassifier Kind = "classifier"
 )
 
 // Fixture is one conformance case loaded from testdata/execution_recovery_v1.
 type Fixture struct {
 	Name                 string          `json:"-"`
+	Version              int             `json:"version"`
+	Kind                 Kind            `json:"kind"`
 	Rule                 string          `json:"rule"`
 	HTTPStatus           int             `json:"httpStatus"`
 	RequireChainEvidence bool            `json:"requireChainEvidence"`
@@ -30,12 +48,32 @@ type SequenceStep struct {
 
 // SequenceFixture exercises multi-poll recovery (R6).
 type SequenceFixture struct {
-	Name  string         `json:"name"`
-	Rule  string         `json:"rule"`
-	Steps []SequenceStep `json:"steps"`
+	Name    string         `json:"name"`
+	Version int            `json:"version"`
+	Kind    Kind           `json:"kind"`
+	Rule    string         `json:"rule"`
+	Steps   []SequenceStep `json:"steps"`
 }
 
-// LoadFixtureDir loads every *.json fixture (not *.sequence.json) from dir.
+func validateMeta(name string, version int, kind Kind) error {
+	if version != FixtureVersion {
+		return fmt.Errorf("%s: unsupported fixture version %d (want %d)", name, version, FixtureVersion)
+	}
+	switch kind {
+	case KindObserved, KindDefensive, KindClassifier:
+		return nil
+	case "":
+		return fmt.Errorf("%s: missing kind (observed|defensive|classifier)", name)
+	default:
+		return fmt.Errorf("%s: unknown kind %q", name, kind)
+	}
+}
+
+func isSequenceName(name string) bool {
+	return strings.HasSuffix(name, ".sequence.json")
+}
+
+// LoadFixtureDir loads every versioned *.json fixture that is not a sequence.
 func LoadFixtureDir(dir string) ([]Fixture, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -47,10 +85,7 @@ func LoadFixtureDir(dir string) ([]Fixture, error) {
 			continue
 		}
 		name := e.Name()
-		if filepath.Ext(name) != ".json" {
-			continue
-		}
-		if len(name) >= len(".sequence.json") && name[len(name)-len(".sequence.json"):] == ".sequence.json" {
+		if filepath.Ext(name) != ".json" || isSequenceName(name) {
 			continue
 		}
 		path := filepath.Join(dir, name)
@@ -62,8 +97,34 @@ func LoadFixtureDir(dir string) ([]Fixture, error) {
 		if err := json.Unmarshal(raw, &f); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}
+		if err := validateMeta(name, f.Version, f.Kind); err != nil {
+			return nil, err
+		}
+		if f.Rule == "" {
+			return nil, fmt.Errorf("%s: missing rule", name)
+		}
 		f.Name = name
 		out = append(out, f)
+	}
+	return out, nil
+}
+
+// LoadSequenceDir loads every *.sequence.json fixture in dir.
+func LoadSequenceDir(dir string) ([]SequenceFixture, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var out []SequenceFixture
+	for _, e := range entries {
+		if e.IsDir() || !isSequenceName(e.Name()) {
+			continue
+		}
+		seq, err := LoadSequence(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, seq)
 	}
 	return out, nil
 }
@@ -77,6 +138,19 @@ func LoadSequence(path string) (SequenceFixture, error) {
 	var seq SequenceFixture
 	if err := json.Unmarshal(raw, &seq); err != nil {
 		return SequenceFixture{}, err
+	}
+	name := filepath.Base(path)
+	if seq.Name == "" {
+		seq.Name = name
+	}
+	if err := validateMeta(name, seq.Version, seq.Kind); err != nil {
+		return SequenceFixture{}, err
+	}
+	if seq.Rule == "" {
+		return SequenceFixture{}, fmt.Errorf("%s: missing rule", name)
+	}
+	if len(seq.Steps) == 0 {
+		return SequenceFixture{}, fmt.Errorf("%s: sequence has no steps", name)
 	}
 	return seq, nil
 }

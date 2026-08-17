@@ -1,13 +1,14 @@
 {
   "name": "cold_start",
+  "version": 1,
+  "kind": "observed",
   "rule": "R6",
   "steps": [
     {
       "httpStatus": 404,
       "expect": "pending",
       "response": {
-        "error": "Execution not found",
-        "code": "not_found"
+        "error": "Execution not found"
       }
     },
     {
@@ -15,12 +16,12 @@
       "expect": "pending",
       "response": {
         "executionId": "exec_fixture_cold_001",
-        "status": "pending"
+        "status": "pending",
+        "createdAt": "2026-08-11T00:00:00.000Z"
       }
     },
     {
       "httpStatus": 200,
-      "requireChainEvidence": true,
       "expect": "success",
       "response": {
         "executionId": "exec_fixture_cold_001",
@@ -31,7 +32,8 @@
             "hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
             "chainId": 8453,
             "verified": true,
-            "receiptStatus": "success"
+            "receiptStatus": "success",
+            "verifiedAt": "2026-08-11T00:01:00.000Z"
           }
         ]
       }

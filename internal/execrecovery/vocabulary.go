@@ -8,11 +8,12 @@ type Vocabulary struct {
 	Terminal []string
 }
 
-// DirectExecutionVocabulary is GET /api/execute/{id}/status.
+// DirectExecutionVocabulary is GET /api/execute/{id}/status
+// (app/api/execute/_lib/types.ts ExecutionStatus).
 func DirectExecutionVocabulary() Vocabulary {
 	return Vocabulary{
 		Surface:  "direct-execution",
-		Pending:  []string{"pending", "running", "queued", "unconfirmed", "not_found"},
+		Pending:  []string{"pending", "running", "unconfirmed"},
 		Terminal: []string{"completed", "failed"},
 	}
 }

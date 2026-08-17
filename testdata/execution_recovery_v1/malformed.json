@@ -1,8 +1,10 @@
 {
+  "version": 1,
+  "kind": "observed",
   "rule": "R4",
   "httpStatus": 200,
   "requireChainEvidence": false,
   "expect": "malformed",
   "responseRaw": "{{{this is not json",
-  "note": "Genuine unparseable body — must not be treated as success or empty-status poll forever."
+  "note": "Genuine unparseable body — must not be treated as success."
 }

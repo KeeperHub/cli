@@ -1,4 +1,6 @@
 {
+  "version": 1,
+  "kind": "observed",
   "rule": "R4",
   "httpStatus": 200,
   "requireChainEvidence": false,

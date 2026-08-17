@@ -1,10 +1,11 @@
 {
+  "version": 1,
+  "kind": "observed",
   "rule": "R5",
   "httpStatus": 429,
   "requireChainEvidence": false,
   "expect": "rate_limited",
   "response": {
-    "error": "Rate limit exceeded",
-    "code": "rate_limited"
+    "error": "Rate limit exceeded"
   }
 }
