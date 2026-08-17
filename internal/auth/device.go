@@ -176,7 +176,6 @@ func checkDeviceToken(ctx context.Context, baseURL, deviceCode string, headers m
 	return tokenResp, nil
 }
 
-// ReadTokenFromStdin reads a token from ios.In, trims whitespace, and returns it.
 // ReadTokenFromStdin reads an API key without echoing it when stdin is a terminal.
 //
 // Piped input is unchanged, so `echo $KEY | kh auth login --with-token` and CI usage keep

@@ -49,7 +49,7 @@ func TestReadTokenFromStdin_EmptyPipedInputIsAnError(t *testing.T) {
 // A buffer-backed stream is not a terminal, so the reader must take the piped path and never
 // attempt to prompt. This is the guard that keeps non-interactive use working.
 func TestReadTokenFromStdin_NonTerminalTakesPipedPath(t *testing.T) {
-	ios, _, _, errOut := iostreams.Test()
+	ios, _, errOut, _ := iostreams.Test()
 	ios.In = io_NopReader("kh_piped")
 
 	got, err := ReadTokenFromStdin(ios)
@@ -66,7 +66,7 @@ func TestReadTokenFromStdin_NonTerminalTakesPipedPath(t *testing.T) {
 
 // The token must never be written to any stream the caller controls.
 func TestReadTokenFromStdin_TokenIsNotEchoed(t *testing.T) {
-	ios, out, _, errOut := iostreams.Test()
+	ios, out, errOut, _ := iostreams.Test()
 	const secret = "kh_must_not_appear_anywhere"
 	ios.In = io_NopReader(secret)
 
