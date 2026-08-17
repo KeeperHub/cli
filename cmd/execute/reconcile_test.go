@@ -79,6 +79,136 @@ func TestContractCallCmd_WaitReconcilesCompletedWithoutHash(t *testing.T) {
 	}
 }
 
+// completed with no transaction is legitimate: a read-only call or a non-transaction step
+// completes without submitting anything. The three paths that consume a status response all
+// report the condition and all exit zero. Erroring on it is opt-in behaviour, not the default.
+func TestTransferCmd_WaitReportsCompletedWithoutTransaction(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/status") {
+			w.Header().Set("X-Poll-Interval-Hint", "0")
+			_, _ = w.Write([]byte(`{"executionId":"exec-noop","status":"completed"}`))
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-noop","status":"completed"}`))
+	}))
+	defer srv.Close()
+
+	ios, buf, _, _ := iostreams.Test()
+	cmd := execute.NewTransferCmd(newTransferFactory(ios, srv))
+	cmd.SetArgs([]string{"--chain", "84532", "--to", "0xabc", "--amount", "0.1", "--wait"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected a completed execution with no transaction to succeed, got: %v", err)
+	}
+	if out := buf.String(); !strings.Contains(out, "none submitted") {
+		t.Errorf("expected the output to report that nothing was submitted, got: %q", out)
+	}
+}
+
+func TestExecStatusCmd_ReportsCompletedWithoutTransaction(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"executionId":"exec-noop","status":"completed","type":"contract-call"}`))
+	}))
+	defer srv.Close()
+
+	ios, buf, _, _ := iostreams.Test()
+	cmd := execute.NewStatusCmd(newStatusFactory(ios, srv))
+	cmd.SetArgs([]string{"exec-noop"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected a completed execution with no transaction to succeed, got: %v", err)
+	}
+	if out := buf.String(); !strings.Contains(out, "none submitted") {
+		t.Errorf("expected the output to report that nothing was submitted, got: %q", out)
+	}
+}
+
+func TestExecStatusCmd_WatchReportsCompletedWithoutTransaction(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Poll-Interval-Hint", "0")
+		_, _ = w.Write([]byte(`{"executionId":"exec-noop","status":"completed"}`))
+	}))
+	defer srv.Close()
+
+	ios, buf, _, _ := iostreams.Test()
+	cmd := execute.NewStatusCmd(newStatusFactory(ios, srv))
+	cmd.SetArgs([]string{"exec-noop", "--watch"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected a completed execution with no transaction to succeed, got: %v", err)
+	}
+	if out := buf.String(); !strings.Contains(out, "none submitted") {
+		t.Errorf("expected the output to report that nothing was submitted, got: %q", out)
+	}
+}
+
+// unconfirmed is terminal. Nothing moves it until the reconciler runs on its own schedule, so a
+// poll loop that keeps going only burns requests until the caller's timeout. It exits zero, since
+// a non-zero exit invites a retry that can re-broadcast a transaction already onchain.
+func TestTransferCmd_WaitStopsOnUnconfirmed(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/status") {
+			w.Header().Set("X-Poll-Interval-Hint", "1")
+			_, _ = w.Write([]byte(`{"executionId":"exec-unc","status":"unconfirmed","transactionHash":"0xunc"}`))
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-unc","status":"pending"}`))
+	}))
+	defer srv.Close()
+
+	ios, buf, _, _ := iostreams.Test()
+	cmd := execute.NewTransferCmd(newTransferFactory(ios, srv))
+	cmd.SetArgs([]string{"--chain", "84532", "--to", "0xabc", "--amount", "0.1", "--wait", "--timeout", "3s"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected --wait to exit zero on unconfirmed, got: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "unconfirmed") {
+		t.Errorf("expected the unconfirmed status in the output, got: %q", out)
+	}
+	if !strings.Contains(out, "0xunc") {
+		t.Errorf("expected the transaction hash in the output, got: %q", out)
+	}
+}
+
+// If unconfirmed were treated as pending, --watch has no deadline to fall back on and this would
+// poll until the test binary is killed.
+func TestExecStatusCmd_WatchStopsOnUnconfirmed(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Poll-Interval-Hint", "1")
+		_, _ = w.Write([]byte(`{"executionId":"exec-unc","status":"unconfirmed","transactionHash":"0xunc"}`))
+	}))
+	defer srv.Close()
+
+	ios, buf, _, _ := iostreams.Test()
+	cmd := execute.NewStatusCmd(newStatusFactory(ios, srv))
+	cmd.SetArgs([]string{"exec-unc", "--watch"})
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Execute() }()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("expected --watch to exit zero on unconfirmed, got: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("--watch kept polling an unconfirmed execution instead of stopping")
+	}
+
+	if out := buf.String(); !strings.Contains(out, "0xunc") {
+		t.Errorf("expected the transaction hash in the output, got: %q", out)
+	}
+}
+
 // The server's pacing is honoured rather than a fixed client-side timer. A large hint on the
 // first poll would previously have been ignored, and the client would have polled on its own
 // two second cadence regardless of what the server asked for.

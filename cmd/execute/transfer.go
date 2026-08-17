@@ -27,10 +27,20 @@ type transferResponse struct {
 	TransactionHash *string `json:"transactionHash,omitempty"`
 }
 
+// execTerminalStatuses are the statuses a poll loop stops on.
+//
+// unconfirmed is terminal for a client: the server hands it back once a transaction was broadcast
+// but no receipt was observed, and nothing moves it until the reconciler runs on its own schedule,
+// so polling past it only burns requests. --wait and --watch stop there and exit zero, because a
+// non-zero exit invites a retry, and retrying a broadcast can double-spend.
 var execTerminalStatuses = map[string]bool{
-	"completed": true,
-	"failed":    true,
+	"completed":   true,
+	"failed":      true,
+	"unconfirmed": true,
 }
+
+// noTransactionNote labels a completed execution that put nothing onchain.
+const noTransactionNote = "none submitted"
 
 func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
@@ -109,7 +119,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 				})
 			}
 
-			if execTerminalStatuses[execResp.Status] && !writeNeedsReconciliation(execResp.Status, execResp.TransactionHash) {
+			if execTerminalStatuses[execResp.Status] && !completedWithoutTransaction(execResp.Status, execResp.TransactionHash) {
 				return printTransferResult(p, &execResp)
 			}
 
@@ -205,14 +215,19 @@ func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStat
 	return &sr, delay, serverSaysTerminal, nil
 }
 
-// writeNeedsReconciliation reports whether a direct-write response that claims a terminal status
-// is missing the evidence the caller actually needs.
+// completedWithoutTransaction reports an execution that reached "completed" carrying no
+// transaction hash.
 //
-// A successful /api/execute/contract-call broadcast can return 202 with status "completed" and no
-// transactionHash; the hash only appears on the status endpoint. Treating that response as final
-// means --wait returns "completed" while the caller still has no transaction to verify, which is
-// the one outcome the flag exists to prevent.
-func writeNeedsReconciliation(status string, txHash *string) bool {
+// On a direct-write response it means one status fetch is worth making: a successful
+// /api/execute/contract-call broadcast can return 202 with status "completed" and no
+// transactionHash, because the hash only appears on the status endpoint, so --wait would
+// otherwise report a completion the caller cannot tie to a transaction.
+//
+// On a status response it is not an error. Any action that submits nothing onchain - a read-only
+// contract call, a non-transaction plugin step - completes exactly this way by design, so the
+// condition is reported in the output and the exit code is left alone. Failing on it is opt-in
+// behaviour and belongs behind an explicit flag.
+func completedWithoutTransaction(status string, txHash *string) bool {
 	return status == "completed" && (txHash == nil || *txHash == "")
 }
 
@@ -225,6 +240,9 @@ func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
 		}
 		if sr.TransactionLink != nil && *sr.TransactionLink != "" {
 			tw.AppendRow(table.Row{"TX Link", *sr.TransactionLink})
+		}
+		if completedWithoutTransaction(sr.Status, sr.TransactionHash) {
+			tw.AppendRow(table.Row{"Transaction", noTransactionNote})
 		}
 		tw.Render()
 	})

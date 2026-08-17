@@ -7,9 +7,10 @@ import (
 )
 
 // A successful /api/execute/contract-call broadcast can return 202 with status "completed" and
-// no transactionHash; the hash only appears on the status endpoint. Treating that as final means
-// --wait returns success while the caller still has no transaction to verify.
-func TestWriteNeedsReconciliation(t *testing.T) {
+// no transactionHash; the hash only appears on the status endpoint, so a direct-write response in
+// this shape is worth one reconciling fetch. On a status response the same shape is legitimate,
+// because an action that submits nothing onchain completes this way, so it is only reported.
+func TestCompletedWithoutTransaction(t *testing.T) {
 	empty := ""
 	hash := "0xabc"
 
@@ -19,20 +20,35 @@ func TestWriteNeedsReconciliation(t *testing.T) {
 		tx     *string
 		want   bool
 	}{
-		{"completed without a hash must be reconciled", "completed", nil, true},
-		{"completed with an empty hash must be reconciled", "completed", &empty, true},
-		{"completed with a hash is final", "completed", &hash, false},
-		{"failed is final regardless of the hash", "failed", nil, false},
-		{"running is not terminal anyway", "running", nil, false},
-		{"unconfirmed is not terminal anyway", "unconfirmed", nil, false},
+		{"completed without a hash", "completed", nil, true},
+		{"completed with an empty hash", "completed", &empty, true},
+		{"completed with a hash", "completed", &hash, false},
+		{"failed carries no such expectation", "failed", nil, false},
+		{"running is not completed", "running", nil, false},
+		{"unconfirmed already implies a broadcast", "unconfirmed", nil, false},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := writeNeedsReconciliation(tc.status, tc.tx); got != tc.want {
-				t.Errorf("writeNeedsReconciliation(%q, %v) = %v, want %v", tc.status, tc.tx, got, tc.want)
+			if got := completedWithoutTransaction(tc.status, tc.tx); got != tc.want {
+				t.Errorf("completedWithoutTransaction(%q, %v) = %v, want %v", tc.status, tc.tx, got, tc.want)
 			}
 		})
+	}
+}
+
+// unconfirmed is terminal for a client: nothing moves it until the reconciler runs, so a poll loop
+// that treats it as pending just burns requests until the caller's timeout.
+func TestExecTerminalStatuses(t *testing.T) {
+	for _, status := range []string{"completed", "failed", "unconfirmed"} {
+		if !execTerminalStatuses[status] {
+			t.Errorf("expected %q to be terminal", status)
+		}
+	}
+	for _, status := range []string{"pending", "running"} {
+		if execTerminalStatuses[status] {
+			t.Errorf("expected %q not to be terminal", status)
+		}
 	}
 }
 
@@ -50,6 +66,8 @@ func TestNextPollDelay(t *testing.T) {
 		{"surrounding whitespace is tolerated", "  3 ", true, 3 * time.Second, false},
 		{"an unparseable hint falls back rather than failing", "soon", true, defaultPollInterval, false},
 		{"a negative hint falls back", "-1", true, defaultPollInterval, false},
+		{"a hint at the ceiling is honoured", "30", true, maxPollIntervalSecs * time.Second, false},
+		{"an oversized hint is clamped to the ceiling", "3600", true, maxPollIntervalSecs * time.Second, false},
 	}
 
 	for _, tc := range cases {

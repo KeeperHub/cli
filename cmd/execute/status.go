@@ -17,12 +17,18 @@ import (
 // defaultPollInterval is used when the server sends no polling hint.
 const defaultPollInterval = 2 * time.Second
 
+// maxPollIntervalSecs caps the server's hint. watchExecStatus has no deadline, so an oversized or
+// hostile hint would otherwise park the loop for as long as the server asked.
+const maxPollIntervalSecs = 30
+
 // nextPollDelay reads the X-Poll-Interval-Hint response header, which the Direct Execution API
 // documents as the number of seconds to wait before polling again. Honouring it lets the server
-// pace clients instead of every client polling on its own fixed timer.
+// pace clients instead of every client polling on its own fixed timer. The hint is clamped to
+// maxPollIntervalSecs so it can slow a caller down but not stall it.
 //
 // A hint of 0 means the execution has reached a terminal state, reported here as (0, true) so a
-// caller stops rather than sleeping for zero and spinning.
+// caller stops rather than sleeping for zero and spinning. A negative or unparseable hint falls
+// back to the default rather than yielding a zero delay the loop would spin on.
 func nextPollDelay(resp *http.Response) (time.Duration, bool) {
 	raw := strings.TrimSpace(resp.Header.Get("X-Poll-Interval-Hint"))
 	if raw == "" {
@@ -35,7 +41,7 @@ func nextPollDelay(resp *http.Response) (time.Duration, bool) {
 	if secs == 0 {
 		return 0, true
 	}
-	return time.Duration(secs) * time.Second, false
+	return time.Duration(min(secs, maxPollIntervalSecs)) * time.Second, false
 }
 
 // ExecStatusResponse represents the execution status API response.
@@ -113,6 +119,9 @@ func renderExecStatus(p *output.Printer, f *cmdutil.Factory, sr *ExecStatusRespo
 		}
 		if sr.TransactionLink != nil && *sr.TransactionLink != "" {
 			tw.AppendRow(table.Row{"TX Link", *sr.TransactionLink})
+		}
+		if completedWithoutTransaction(sr.Status, sr.TransactionHash) {
+			tw.AppendRow(table.Row{"Transaction", noTransactionNote})
 		}
 		if sr.CreatedAt != "" {
 			tw.AppendRow(table.Row{"Created", sr.CreatedAt})
