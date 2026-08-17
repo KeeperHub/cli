@@ -27,7 +27,6 @@ Expand-Archive kh_<version>_windows_amd64.zip -DestinationPath "$env:LOCALAPPDAT
 
 Restart your terminal, then run `kh version`. If SmartScreen blocks the first run, use `Unblock-File "$env:LOCALAPPDATA\Programs\kh\kh.exe"`.
 
-
 ## Auth
 
 ```
