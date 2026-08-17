@@ -23,7 +23,7 @@ type ExecStatusResponse struct {
 	Error           *string       `json:"error"`
 	CreatedAt       string        `json:"createdAt"`
 	CompletedAt     *string       `json:"completedAt"`
-	Receipts        []ExecReceipt `json:"receipts,omitempty"`
+	Receipts        []ExecReceipt `json:"receipts"`
 }
 
 // ExecReceipt is a chain-re-fetched proof entry attached to an execution.
@@ -46,11 +46,15 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases: []string{"st"},
 		Args:    cobra.ExactArgs(1),
 		Long: `Show the status of a direct blockchain execution (transfer or contract call).
-Use --watch to poll until the execution reaches a terminal state.
+Use --watch to poll until the execution reaches a terminal state. Unconfirmed
+is terminal: the transaction was broadcast but no receipt could be read yet,
+and the reconciler keeps watching it, so re-check the execution later.
 
 Use --require-verified to fail unless the execution completed AND every
 onchain receipt is chain-verified with receiptStatus "success". A completed
-status without receipts exits non-zero: submitted is not the same as landed.
+status without receipts exits non-zero: nothing was submitted, so there is
+nothing to chain-verify. An unconfirmed status exits non-zero as well: a
+broadcast with no readable receipt is not proof the transaction landed.
 
 See also: kh r st, kh ex transfer, kh ex cc`,
 		Example: `  # Show execution status
@@ -120,6 +124,9 @@ func renderExecStatus(p *output.Printer, f *cmdutil.Factory, sr *ExecStatusRespo
 		}
 		for _, r := range sr.Receipts {
 			state := r.ReceiptStatus
+			if state == "" {
+				state = "unknown"
+			}
 			if r.Verified {
 				state += ", verified"
 			} else {
@@ -133,6 +140,10 @@ func renderExecStatus(p *output.Printer, f *cmdutil.Factory, sr *ExecStatusRespo
 		tw.Render()
 	}); err != nil {
 		return err
+	}
+
+	if sr.Status == execStatusUnconfirmed {
+		printUnconfirmedNotice(f, sr.ExecutionID, sr.TransactionHash)
 	}
 
 	if sr.Status == "failed" {
@@ -161,8 +172,11 @@ func renderExecStatusChecked(p *output.Printer, f *cmdutil.Factory, sr *ExecStat
 // verifyExecReceipts fails closed: a completed status only counts as landed
 // when at least one receipt exists and every receipt is chain-verified with
 // receiptStatus "success". not_found and timeout receipts are treated as
-// unproven, not as success.
+// unproven, not as success, and so is an unconfirmed execution.
 func verifyExecReceipts(sr *ExecStatusResponse) error {
+	if sr.Status == execStatusUnconfirmed {
+		return fmt.Errorf("execution %s is unconfirmed: the transaction was broadcast but no receipt could be read, so it is not proven landed", sr.ExecutionID)
+	}
 	if sr.Status != "completed" {
 		return fmt.Errorf("execution %s is %s, not completed", sr.ExecutionID, sr.Status)
 	}

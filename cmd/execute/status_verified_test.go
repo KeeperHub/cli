@@ -56,7 +56,7 @@ func TestExecStatusCmd_RequireVerified_PassesWithVerifiedReceipts(t *testing.T) 
 	if !strings.Contains(out, "0xabc") {
 		t.Errorf("expected receipt hash in output, got: %q", out)
 	}
-	if !strings.Contains(out, "verified") {
+	if !strings.Contains(out, ", verified)") {
 		t.Errorf("expected verified marker in output, got: %q", out)
 	}
 }
@@ -211,5 +211,180 @@ func TestExecStatusCmd_Watch_RequireVerified_PassesOnVerifiedTerminal(t *testing
 
 	if !strings.Contains(buf.String(), "0xwatched") {
 		t.Errorf("expected receipt hash in output, got: %q", buf.String())
+	}
+}
+
+// serveUnconfirmed serves pending until the second call, then unconfirmed with
+// a broadcast hash and no receipts, and reports how many times it was polled.
+func serveUnconfirmed(executionID string, calls *int) *httptest.Server {
+	txHash := "0xbroadcast"
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*calls++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		resp := execute.ExecStatusResponse{ExecutionID: executionID, Status: "pending"}
+		if *calls >= 2 {
+			resp = execute.ExecStatusResponse{
+				ExecutionID:     executionID,
+				Status:          "unconfirmed",
+				TransactionHash: &txHash,
+			}
+		}
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, "encode error", http.StatusInternalServerError)
+		}
+	}))
+}
+
+func TestExecStatusCmd_Watch_StopsOnUnconfirmed(t *testing.T) {
+	calls := 0
+	srv := serveUnconfirmed("exec-unconfirmed-watch", &calls)
+	defer srv.Close()
+
+	ios, buf, errBuf, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+
+	cmd := execute.NewStatusCmd(f)
+	cmd.SetArgs([]string{"exec-unconfirmed-watch", "--watch"})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Execute()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("expected exit zero on unconfirmed, got: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("--watch did not stop on unconfirmed")
+	}
+
+	if calls > 3 {
+		t.Errorf("expected polling to stop at the unconfirmed response, got %d polls", calls)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "unconfirmed") {
+		t.Errorf("expected unconfirmed status in output, got: %q", out)
+	}
+	if !strings.Contains(out, "0xbroadcast") {
+		t.Errorf("expected broadcast tx hash in output, got: %q", out)
+	}
+	if !strings.Contains(errBuf.String(), "reconciler") {
+		t.Errorf("expected reconciler notice on stderr, got: %q", errBuf.String())
+	}
+}
+
+func TestExecStatusCmd_Watch_RequireVerified_FailsOnUnconfirmed(t *testing.T) {
+	calls := 0
+	srv := serveUnconfirmed("exec-unconfirmed-gate", &calls)
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+
+	cmd := execute.NewStatusCmd(f)
+	cmd.SetArgs([]string{"exec-unconfirmed-gate", "--watch", "--require-verified"})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Execute()
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected error for unconfirmed execution, got nil")
+		}
+		if !strings.Contains(err.Error(), "unconfirmed") {
+			t.Errorf("expected 'unconfirmed' in error, got: %q", err.Error())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("--watch --require-verified did not return a verdict on unconfirmed")
+	}
+}
+
+func TestExecStatusCmd_RequireVerified_FailsWhenUnconfirmed(t *testing.T) {
+	txHash := "0xbroadcast"
+	srv := serveStatus(t, execute.ExecStatusResponse{
+		ExecutionID:     "exec-unconfirmed",
+		Status:          "unconfirmed",
+		TransactionHash: &txHash,
+	})
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+
+	cmd := execute.NewStatusCmd(f)
+	cmd.SetArgs([]string{"exec-unconfirmed", "--require-verified"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for unconfirmed execution, got nil")
+	}
+	if !strings.Contains(err.Error(), "unconfirmed") {
+		t.Errorf("expected 'unconfirmed' in error, got: %q", err.Error())
+	}
+}
+
+func TestExecStatusCmd_WithoutRequireVerified_UnconfirmedExitsZero(t *testing.T) {
+	txHash := "0xbroadcast"
+	srv := serveStatus(t, execute.ExecStatusResponse{
+		ExecutionID:     "exec-unconfirmed-plain",
+		Status:          "unconfirmed",
+		TransactionHash: &txHash,
+	})
+	defer srv.Close()
+
+	ios, buf, errBuf, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+
+	cmd := execute.NewStatusCmd(f)
+	cmd.SetArgs([]string{"exec-unconfirmed-plain"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected exit zero on unconfirmed, got: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "0xbroadcast") {
+		t.Errorf("expected broadcast tx hash in output, got: %q", buf.String())
+	}
+	if !strings.Contains(errBuf.String(), "reconciler") {
+		t.Errorf("expected reconciler notice on stderr, got: %q", errBuf.String())
+	}
+}
+
+func TestExecStatusCmd_ReceiptWithoutStatus_RendersUnknown(t *testing.T) {
+	srv := serveStatus(t, execute.ExecStatusResponse{
+		ExecutionID: "exec-blank-receipt-status",
+		Status:      "completed",
+		Receipts: []execute.ExecReceipt{{
+			Hash:     "0xabc",
+			ChainID:  84532,
+			Verified: true,
+		}},
+	})
+	defer srv.Close()
+
+	ios, buf, _, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+
+	cmd := execute.NewStatusCmd(f)
+	cmd.SetArgs([]string{"exec-blank-receipt-status"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := buf.String()
+	if strings.Contains(out, "(, verified)") {
+		t.Errorf("expected empty receiptStatus to render a placeholder, got: %q", out)
+	}
+	if !strings.Contains(out, "(unknown, verified)") {
+		t.Errorf("expected unknown receiptStatus marker in output, got: %q", out)
 	}
 }

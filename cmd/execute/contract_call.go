@@ -125,7 +125,13 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 				}
 
 				if execTerminalStatuses[writeResp.Status] {
-					return printContractCallWriteResult(p, &writeResp)
+					if err := printContractCallWriteResult(p, &writeResp); err != nil {
+						return err
+					}
+					if writeResp.Status == execStatusUnconfirmed {
+						printUnconfirmedNotice(f, writeResp.ExecutionID, writeResp.TransactionHash)
+					}
+					return nil
 				}
 
 				return pollExecStatus(f, client, host, writeResp.ExecutionID, timeout, p)
