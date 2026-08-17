@@ -51,6 +51,24 @@ func printUnconfirmedNotice(f *cmdutil.Factory, executionID string, txHash *stri
 		executionID, hash, executionID)
 }
 
+// terminalExecError reports a terminal status that did not succeed.
+//
+// Two paths reach a terminal status: the write response can already carry one,
+// and pollExecStatus reads one from the status endpoint. Both must classify it
+// the same way. They did not, so a write that failed fast exited zero while the
+// identical failure discovered one poll later exited non-zero.
+//
+// apiErr is nil on the write path, whose response carries no error detail.
+func terminalExecError(executionID, status string, apiErr *string) error {
+	if status != "failed" {
+		return nil
+	}
+	if apiErr != nil && *apiErr != "" {
+		return fmt.Errorf("%s", *apiErr)
+	}
+	return fmt.Errorf("execution %s failed", executionID)
+}
+
 func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "transfer",
@@ -129,6 +147,9 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			if execTerminalStatuses[execResp.Status] {
+				if err := terminalExecError(execResp.ExecutionID, execResp.Status, nil); err != nil {
+					return err
+				}
 				if err := printTransferResult(p, &execResp); err != nil {
 					return err
 				}
@@ -182,12 +203,8 @@ func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID
 			}
 
 			if execTerminalStatuses[statusResp.Status] {
-				if statusResp.Status == "failed" {
-					msg := fmt.Sprintf("execution %s failed", executionID)
-					if statusResp.Error != nil {
-						msg = *statusResp.Error
-					}
-					return fmt.Errorf("%s", msg)
+				if err := terminalExecError(executionID, statusResp.Status, statusResp.Error); err != nil {
+					return err
 				}
 				if err := printExecStatusResult(p, statusResp); err != nil {
 					return err

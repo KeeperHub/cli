@@ -125,6 +125,9 @@ func NewContractCallCmd(f *cmdutil.Factory) *cobra.Command {
 				}
 
 				if execTerminalStatuses[writeResp.Status] {
+					if err := terminalExecError(writeResp.ExecutionID, writeResp.Status, nil); err != nil {
+						return err
+					}
 					if err := printContractCallWriteResult(p, &writeResp); err != nil {
 						return err
 					}

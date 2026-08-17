@@ -44,6 +44,38 @@ func (f *FlexibleString) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// MarshalJSON emits the value as a bare JSON number when it holds one, so
+// --json output matches kh chain list --json instead of diverging from it.
+// Value receiver, so it applies to non-pointer struct fields.
+func (f FlexibleString) MarshalJSON() ([]byte, error) {
+	if isJSONInteger(string(f)) {
+		return []byte(f), nil
+	}
+	return json.Marshal(string(f))
+}
+
+// isJSONInteger reports whether s is a bare JSON integer literal. Deliberately
+// stricter than strconv.ParseFloat, which accepts "NaN" and "Inf" and would
+// emit invalid JSON. Digit-checking also preserves arbitrary precision, so
+// there is no int64 ceiling on chain ids.
+func isJSONInteger(s string) bool {
+	if s == "" {
+		return false
+	}
+	if s[0] == '-' {
+		s = s[1:]
+	}
+	if s == "" || (len(s) > 1 && s[0] == '0') {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // ChainBalance holds the balance for a single chain.
 type ChainBalance struct {
 	ChainID       FlexibleString `json:"chainId"`
