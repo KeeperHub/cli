@@ -56,7 +56,9 @@ Prints a URL and a one-time code. Open the URL in any browser (the browser
 does not open automatically — copy the URL from the terminal) and enter the
 code to complete sign-in. Codes expire after 15 minutes.
 Use --with-token to supply an API key. In a terminal it is prompted for without
-echo; piped input is read from stdin for non-interactive automation.
+echo; piped or redirected input is read from stdin for non-interactive
+automation. Passing the key inline records it in your shell history, where it
+stays after the session ends.
 
 See also: kh auth status, kh auth logout`,
 		Example: `  # Log in (device code flow)
@@ -65,9 +67,10 @@ See also: kh auth status, kh auth logout`,
   # Log in with an API key (prompted, not echoed)
   kh auth login --with-token
 
-  # Non-interactive, for CI. Prefer a variable over a literal so the key stays
-  # out of shell history.
-  printf '%s' "$KEEPERHUB_API_KEY" | kh auth login --with-token`,
+  # Non-interactive, for CI. Use a variable or a file so the key stays out of
+  # shell history.
+  printf '%s' "$KEEPERHUB_API_KEY" | kh auth login --with-token
+  kh auth login --with-token < api-key.txt`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hosts, err := config.ReadHosts()
 			if err != nil {
