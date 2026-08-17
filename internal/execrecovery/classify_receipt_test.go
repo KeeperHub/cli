@@ -31,10 +31,10 @@ func TestClassify_ReceiptStates(t *testing.T) {
 	}
 	for _, st := range []string{"not_found", "timeout"} {
 		st := st
-		t.Run("unconfirmed "+st+" is pending", func(t *testing.T) {
+		t.Run("unconfirmed "+st+" is unconfirmed", func(t *testing.T) {
 			got, reason := execrecovery.Classify(execrecovery.Sample{HTTPStatus: 200, Body: unconfirmed(st)}, execrecovery.Options{})
-			if got != execrecovery.OutcomePending {
-				t.Fatalf("got %s (%s), want pending", got, reason)
+			if got != execrecovery.OutcomeUnconfirmed {
+				t.Fatalf("got %s (%s), want unconfirmed", got, reason)
 			}
 		})
 	}

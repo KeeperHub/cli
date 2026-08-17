@@ -13,9 +13,13 @@ import (
 type Outcome string
 
 const (
-	OutcomePending      Outcome = "pending"
-	OutcomeSuccess      Outcome = "success"
-	OutcomeFailure      Outcome = "failure"
+	OutcomePending Outcome = "pending"
+	OutcomeSuccess Outcome = "success"
+	OutcomeFailure Outcome = "failure"
+	// OutcomeUnconfirmed is broadcast-but-unreadable. It is neither success nor
+	// failure: the transaction may already be on chain. Callers stop waiting and
+	// report it; they must not poll it through and must not resubmit.
+	OutcomeUnconfirmed  Outcome = "unconfirmed"
 	OutcomeMalformed    Outcome = "malformed"
 	OutcomeRateLimited  Outcome = "rate_limited"
 	OutcomeUnrecognized Outcome = "unrecognized"
@@ -73,6 +77,10 @@ type Sample struct {
 // (app/api/execute/_lib/types.ts). Workflow run statuses (success|error|cancelled)
 // belong to a different API and must not be fed here — see Vocabulary().
 //
+// `unconfirmed` maps to OutcomeUnconfirmed, not OutcomePending: the server
+// keeps reconciling that row, but a client must stop waiting on it rather than
+// poll to a failure the chain never reported.
+//
 // An unknown future status is OutcomeUnrecognized (never success, never
 // malformed) so a server addition does not look like a corrupt body.
 func Classify(sample Sample, opts Options) (Outcome, string) {
@@ -113,8 +121,10 @@ func Classify(sample Sample, opts Options) (Outcome, string) {
 	}
 
 	switch status {
-	case "pending", "running", "unconfirmed":
+	case "pending", "running":
 		return OutcomePending, status
+	case "unconfirmed":
+		return OutcomeUnconfirmed, status
 	case "failed":
 		return OutcomeFailure, status
 	case "completed":

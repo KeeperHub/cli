@@ -313,6 +313,47 @@ func TestTransferCmd_WaitPersistent404TimesOut(t *testing.T) {
 	}
 }
 
+// An unreadable receipt must not become a non-zero exit: that is what makes a
+// caller re-run and broadcast a second transaction for an intent that may
+// already be on chain.
+func TestTransferCmd_WaitStopsOnUnconfirmedAndExitsZero(t *testing.T) {
+	var statusReads int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodPost {
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"executionId":"exec-unconf","status":"pending"}`))
+			return
+		}
+		atomic.AddInt32(&statusReads, 1)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"executionId":     "exec-unconf",
+			"status":          "unconfirmed",
+			"transactionHash": "0xunconf",
+			"receipts": []map[string]any{
+				{"hash": "0xunconf", "verified": false, "receiptStatus": "not_found", "verifiedAt": "2026-08-11T00:00:00Z"},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	ios, out, _, _ := iostreams.Test()
+	f := newTransferFactory(ios, srv)
+	cmd := execute.NewTransferCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--to", "0xabc", "--amount", "0.1", "--wait", "--timeout", "10s"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unconfirmed must exit zero, got %v", err)
+	}
+	if got := atomic.LoadInt32(&statusReads); got != 1 {
+		t.Fatalf("status reads=%d, want 1 (unconfirmed must not be polled through)", got)
+	}
+	if s := out.String(); !strings.Contains(s, "unconfirmed") || !strings.Contains(s, "0xunconf") {
+		t.Fatalf("expected status and hash in output, got %q", s)
+	}
+}
+
 func TestTransferCmd_WaitFailsOnSafeInnerFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

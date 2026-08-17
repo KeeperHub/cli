@@ -35,6 +35,12 @@ observed production envelope.
 
 (`app/api/execute/_lib/types.ts`. There is no `queued` status on this endpoint.)
 
+Poll while a row is `pending` or `running`. Stop on `unconfirmed`, `completed`
+or `failed`. `unconfirmed` means the transaction was broadcast but no receipt
+could be read; the server keeps reconciling that row, so treat it as "stop
+waiting and report", not as a failure, and read the settled status later
+against the same execution ID.
+
 Workflow run status uses a different vocabulary (`success` / `error` /
 `cancelled`) — do not mix it with direct-execution statuses.
 
@@ -52,6 +58,9 @@ Workflow run status uses a different vocabulary (`success` / `error` /
   a timeout error.
 - `--watch` does **not** treat 404 as pending. A mistyped or foreign-org id
   exits with an error instead of looping.
+- `--wait` and `--watch` stop on `unconfirmed` and report it. `--wait` exits
+  **zero** there, printing the status and transaction hash, because a non-zero
+  exit invites a re-run that would broadcast a second transaction.
 - Wait paths fail when `status=failed`, when a receipt is `reverted` or
   `safe_inner_failure`, and when `status=completed` carries any non-success
   receipt. They do not implement a `--require-verified` flag.

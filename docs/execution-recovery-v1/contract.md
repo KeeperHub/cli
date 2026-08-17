@@ -1,6 +1,6 @@
 # Execution recovery contract (normative)
 
-Version: **1.2.0**  
+Version: **1.3.0**  
 Audience: KeeperHub CLI / MCP / HTTP adapter authors  
 Published path: this file is synced to docs.keeperhub.com via `docs/execution-recovery.md`.
 
@@ -20,9 +20,11 @@ It does **not** cover `POST /api/workflows/<id>/webhook`.
 
 ## Status vocabularies (do not mix)
 
+"Pending" and "Terminal" below are **client wait semantics**: keep polling, or stop waiting and report. Terminal is not a claim that the server will never change the row again.
+
 | Surface | Pending | Terminal |
 | --- | --- | --- |
-| Direct execution (`GET /api/execute/{id}/status`) | `pending`, `running`, `unconfirmed` | `completed`, `failed` |
+| Direct execution (`GET /api/execute/{id}/status`) | `pending`, `running` | `unconfirmed`, `completed`, `failed` |
 | Workflow run (`GET /api/workflows/executions/{id}/status`) | `pending`, `running` | `success`, `error`, `cancelled` |
 
 Server enum (`app/api/execute/_lib/types.ts`): `pending | running | unconfirmed | completed | failed`. There is no `queued` value.
@@ -36,11 +38,13 @@ Receipt statuses (`lib/web3/verify-receipt.ts`): `success | reverted | not_found
 
 ## Rules
 
-### R1 — Unconfirmed → poll, do not resubmit
+### R1 — Poll the same ID, never resubmit
 
-If status is `pending`, `running`, or `unconfirmed`, continue status reads against the **same** execution ID. Do not issue a new write for the same logical intent while that execution ID remains durable.
+If status is `pending` or `running`, continue status reads against the **same** execution ID. Do not issue a new write for the same logical intent while that execution ID remains durable.
 
-**CLI conformance:** `kh ex transfer --wait` / `kh ex cc --wait` poll the same ID.
+`unconfirmed` means the transaction was broadcast but no receipt could be read yet. The server keeps that row open (`completedAt` stays null) and a reconciliation sweep settles it to `completed` or `failed` once the chain answers. A waiting client must **stop** there and report it, rather than poll to an expired budget and exit non-zero: a non-zero exit invites a re-run, and re-running an intent that may already be on chain is the double-spend this contract exists to prevent. Read the settled status later against the same execution ID.
+
+**CLI conformance:** `kh ex transfer --wait` / `kh ex cc --wait` poll the same ID, and stop on `unconfirmed` with exit code 0, printing the status and transaction hash.
 
 ### R2 — Receipts (client invariant)
 
@@ -91,7 +95,7 @@ A first status read that returns HTTP 404 immediately after submit may be transi
 | --- | --- | --- | --- | --- |
 | `pending.json` | observed | R1 | pending | `TestFixtures_ClassifyTable` |
 | `running.json` | observed | R1 | pending | `TestFixtures_ClassifyTable` |
-| `unconfirmed.json` | observed | R1 | pending | `TestFixtures_ClassifyTable` |
+| `unconfirmed.json` | observed | R1 | unconfirmed | `TestFixtures_ClassifyTable` |
 | `completed_with_tx.json` | observed | R2 | success | `TestFixtures_ClassifyTable` |
 | `completed_without_tx.json` | classifier | R2 | failure (strict option) | `TestFixtures_ClassifyTable` |
 | `reverted.json` | defensive | R2 | failure | `TestFixtures_ClassifyTable` + `TestRevertedIsNeverSuccess` |

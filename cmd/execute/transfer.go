@@ -28,9 +28,18 @@ type transferResponse struct {
 	TransactionHash *string `json:"transactionHash,omitempty"`
 }
 
+// execTerminalStatuses are the statuses at which the CLI stops waiting.
+//
+// `unconfirmed` is not terminal on the server: a reconciliation sweep still
+// settles that row to completed or failed once the chain answers. The CLI
+// stops on it anyway and reports it, rather than polling to a non-zero
+// timeout, because a non-zero exit invites a re-run that broadcasts a second
+// transaction for an intent that may already be on chain. Read the settled
+// status later with `kh ex st <id>`.
 var execTerminalStatuses = map[string]bool{
-	"completed": true,
-	"failed":    true,
+	"unconfirmed": true,
+	"completed":   true,
+	"failed":      true,
 }
 
 func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
@@ -231,8 +240,9 @@ func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
 // execOutcomeError returns a non-nil error for failed terminal states and for
 // any receipt that is not explicitly successful when the run has completed, or
 // for a conclusive on-chain failure (reverted / safe_inner_failure) at any
-// status. not_found / timeout receipts on unconfirmed stay non-terminal: the
-// server treats those as unread, not failed.
+// status. not_found / timeout receipts leave `unconfirmed` a zero-exit
+// outcome: the server treats those as unread, not failed, so erroring here
+// would invite the re-run that double-broadcasts.
 func execOutcomeError(sr *ExecStatusResponse) error {
 	if sr.Status == "failed" {
 		msg := fmt.Sprintf("execution %s failed", sr.ExecutionID)
