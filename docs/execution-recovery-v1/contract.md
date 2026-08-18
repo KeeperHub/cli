@@ -1,6 +1,6 @@
 # Execution recovery contract (normative)
 
-Version: **1.3.0**  
+Version: **1.4.0**  
 Audience: KeeperHub CLI / MCP / HTTP adapter authors  
 Published path: this file is synced to docs.keeperhub.com via `docs/execution-recovery.md`.
 
@@ -56,7 +56,7 @@ Never infer success from `status=completed` alone.
 
 KEEP-966 (`completeExecution`) re-verifies every claimed hash before writing `completed`. A reverted receipt is stored `verified: false` and the row settles as `failed`. `{status:"completed", verified:true, receiptStatus:"reverted"}` is **not** an observed production envelope. Fixtures that use that shape are labeled `kind: defensive` so the client stays fail-closed if the gate regresses.
 
-The shipped CLI does **not** set a “require chain evidence” flag and does **not** implement `--require-verified`. Completed with an empty `receipts` array is still treated as success (matches a no-hash completion).
+The shipped CLI implements `--require-verified` on `kh ex status`; the write commands have no such flag. Without it, `completed` with an empty `receipts` array is still treated as success, matching a no-hash completion. With it, the CLI exits non-zero unless the execution completed carrying at least one receipt and every receipt is `verified: true` with `receiptStatus: success`; `unconfirmed` fails the gate as not proven landed.
 
 **CLI conformance:** wait paths fail on `status=failed` and on non-success receipts as above.
 

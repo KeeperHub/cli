@@ -63,7 +63,12 @@ Workflow run status uses a different vocabulary (`success` / `error` /
   exit invites a re-run that would broadcast a second transaction.
 - Wait paths fail when `status=failed`, when a receipt is `reverted` or
   `safe_inner_failure`, and when `status=completed` carries any non-success
-  receipt. They do not implement a `--require-verified` flag.
+  receipt.
+- `kh ex status --require-verified` additionally demands chain proof: it exits
+  non-zero unless the execution completed carrying at least one receipt and
+  every receipt is `verified: true` with `receiptStatus: success`. `unconfirmed`
+  fails that gate, and so does a completion with an empty `receipts` array,
+  which is treated as success without the flag.
 
 ## Fixtures
 
