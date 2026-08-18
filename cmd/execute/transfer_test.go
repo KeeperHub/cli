@@ -237,3 +237,118 @@ func TestTransferCmd_WaitPolls(t *testing.T) {
 	}
 }
 
+func TestTransferCmd_WaitStopsOnUnconfirmed(t *testing.T) {
+	pollCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/status") {
+			pollCount++
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"executionId":"exec-unconfirmed","status":"unconfirmed","transactionHash":"0xbroadcast"}`))
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-unconfirmed","status":"pending"}`))
+	}))
+	defer srv.Close()
+
+	ios, buf, errBuf, _ := iostreams.Test()
+	f := newTransferFactory(ios, srv)
+
+	cmd := execute.NewTransferCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--to", "0xabc", "--amount", "0.1", "--wait", "--timeout", "10s"})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Execute()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("expected exit zero on unconfirmed, got: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("--wait did not stop on unconfirmed")
+	}
+
+	if pollCount > 2 {
+		t.Errorf("expected polling to stop at the unconfirmed response, got %d polls", pollCount)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "unconfirmed") {
+		t.Errorf("expected unconfirmed status in output, got: %q", out)
+	}
+	if !strings.Contains(out, "0xbroadcast") {
+		t.Errorf("expected broadcast tx hash in output, got: %q", out)
+	}
+	if !strings.Contains(errBuf.String(), "reconciler") {
+		t.Errorf("expected reconciler notice on stderr, got: %q", errBuf.String())
+	}
+}
+
+func TestTransferCmd_WaitFailsWhenWriteResponseAlreadyFailed(t *testing.T) {
+	pollCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/status") {
+			pollCount++
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-fastfail","status":"failed"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newTransferFactory(ios, srv)
+
+	cmd := execute.NewTransferCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--to", "0xabc", "--amount", "0.1", "--wait"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected an error when the write response is already failed, got nil")
+	}
+	if !strings.Contains(err.Error(), "exec-fastfail") {
+		t.Errorf("expected the execution id in the error, got: %q", err.Error())
+	}
+	if pollCount > 0 {
+		t.Errorf("expected no polling when already terminal, got %d polls", pollCount)
+	}
+}
+
+func TestTransferCmd_WaitReportsServerErrorFromStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/status") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"executionId":"exec-slowfail","status":"failed","error":"insufficient funds for gas"}`))
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-slowfail","status":"pending"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newTransferFactory(ios, srv)
+
+	cmd := execute.NewTransferCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--to", "0xabc", "--amount", "0.1", "--wait", "--timeout", "10s"})
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Execute() }()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected an error for a failed execution, got nil")
+		}
+		if !strings.Contains(err.Error(), "insufficient funds for gas") {
+			t.Errorf("expected the server error detail, got: %q", err.Error())
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("command timed out")
+	}
+}

@@ -458,3 +458,33 @@ func TestContractCallCmd_IdempotencyConflictFails(t *testing.T) {
 		t.Fatalf("got %d POSTs, want 1", calls.Load())
 	}
 }
+
+func TestContractCallCmd_WaitFailsWhenWriteResponseAlreadyFailed(t *testing.T) {
+	pollCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/status") {
+			pollCount++
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-ccfail","status":"failed"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newContractCallFactory(ios, srv)
+
+	cmd := execute.NewContractCallCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--contract", "0xcontract", "--method", "transfer", "--wait", "--timeout", "10s"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected an error when the write response is already failed, got nil")
+	}
+	if !strings.Contains(err.Error(), "exec-ccfail") {
+		t.Errorf("expected the execution id in the error, got: %q", err.Error())
+	}
+	if pollCount > 0 {
+		t.Errorf("expected no polling when already terminal, got %d polls", pollCount)
+	}
+}
