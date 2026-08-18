@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.15.0](https://github.com/KeeperHub/cli/compare/v0.14.1...v0.15.0) (2026-08-18)
+
+
+### Features
+
+* **execute:** require chain-verified receipts in status ([#95](https://github.com/KeeperHub/cli/issues/95)) ([c4a3a68](https://github.com/KeeperHub/cli/commit/c4a3a6806b9a054a15c39dfb57634ae358e58b56))
+* execution recovery safeguards ([#97](https://github.com/KeeperHub/cli/issues/97)) ([ee59b51](https://github.com/KeeperHub/cli/commit/ee59b5147d6a5ed33ac8121f3127ee1006073e25))
+
+
+### Bug Fixes
+
+* **auth:** prompt for the API key without echo instead of leaving it on screen ([#100](https://github.com/KeeperHub/cli/issues/100)) ([3b957e7](https://github.com/KeeperHub/cli/commit/3b957e7f33066c22949f75891b6d35439836e3eb))
+* **execute:** reconcile writes that report completed without a transaction hash ([#99](https://github.com/KeeperHub/cli/issues/99)) ([b7f4cfe](https://github.com/KeeperHub/cli/commit/b7f4cfef7b4693e1520f131ecc7672a80a4eab90))
+* KEEP-1191 exit non-zero when a write fails before the first poll ([#105](https://github.com/KeeperHub/cli/issues/105)) ([fba4127](https://github.com/KeeperHub/cli/commit/fba4127a92c7fa3a9100d04e0910a9f9e30aa872))
+* **wallet:** marshal FlexibleString as a number when numeric ([#101](https://github.com/KeeperHub/cli/issues/101)) ([d5b2be9](https://github.com/KeeperHub/cli/commit/d5b2be981abbfc980c1c15e7a13082febafe95b8))
+
 ## [0.14.1](https://github.com/KeeperHub/cli/compare/v0.14.0...v0.14.1) (2026-08-09)
 
 
