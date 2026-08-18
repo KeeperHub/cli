@@ -47,3 +47,40 @@ func TestFlexibleStringAcceptsBothShapes(t *testing.T) {
 		}
 	}
 }
+
+func TestFlexibleStringMarshalsNumericAsNumber(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{`{"chainId":11155111}`, `11155111`},   // numeric in -> numeric out
+		{`{"chainId":"11155111"}`, `11155111`}, // legacy string in -> numeric out
+		{`{"chainId":"mainnet"}`, `"mainnet"`}, // non-numeric stays a string
+		{`{"chainId":null}`, `""`},             // null -> zero value
+		{`{"chainId":"NaN"}`, `"NaN"`},         // ParseFloat would accept it; bare NaN is not valid JSON
+		{`{"chainId":"Inf"}`, `"Inf"`},         // ParseFloat would accept it; bare Inf is not valid JSON
+		{`{"chainId":"007"}`, `"007"`},         // leading zeros are not a JSON number
+		{`{"chainId":"0x1a"}`, `"0x1a"`},       // hex is not a JSON number
+	} {
+		var cb wallet.ChainBalance
+		if err := json.Unmarshal([]byte(tc.in), &cb); err != nil {
+			t.Fatalf("ChainBalance %s: %v", tc.in, err)
+		}
+		got, err := json.Marshal(cb.ChainID)
+		if err != nil {
+			t.Fatalf("ChainBalance %s: marshal: %v", tc.in, err)
+		}
+		if string(got) != tc.want {
+			t.Fatalf("ChainBalance %s: got %s want %s", tc.in, got, tc.want)
+		}
+
+		var tok wallet.Token
+		if err := json.Unmarshal([]byte(tc.in), &tok); err != nil {
+			t.Fatalf("Token %s: %v", tc.in, err)
+		}
+		got, err = json.Marshal(tok.ChainID)
+		if err != nil {
+			t.Fatalf("Token %s: marshal: %v", tc.in, err)
+		}
+		if string(got) != tc.want {
+			t.Fatalf("Token %s: got %s want %s", tc.in, got, tc.want)
+		}
+	}
+}

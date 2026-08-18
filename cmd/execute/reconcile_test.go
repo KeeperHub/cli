@@ -149,7 +149,7 @@ func TestExecStatusCmd_WatchReportsCompletedWithoutTransaction(t *testing.T) {
 // unconfirmed is terminal. Nothing moves it until the reconciler runs on its own schedule, so a
 // poll loop that keeps going only burns requests until the caller's timeout. It exits zero, since
 // a non-zero exit invites a retry that can re-broadcast a transaction already onchain.
-func TestTransferCmd_WaitStopsOnUnconfirmed(t *testing.T) {
+func TestTransferCmd_WaitStopsOnUnconfirmedWithPollHint(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.HasSuffix(r.URL.Path, "/status") {

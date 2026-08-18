@@ -27,20 +27,55 @@ type transferResponse struct {
 	TransactionHash *string `json:"transactionHash,omitempty"`
 }
 
+// execStatusUnconfirmed is terminal: the transaction was broadcast but its
+// receipt could not be read within the API's lookup budget. The server-side
+// reconciler keeps watching it, so the execution can be re-checked later.
+const execStatusUnconfirmed = "unconfirmed"
+
 // execTerminalStatuses are the statuses a poll loop stops on.
 //
-// unconfirmed is terminal for a client: the server hands it back once a transaction was broadcast
-// but no receipt was observed, and nothing moves it until the reconciler runs on its own schedule,
-// so polling past it only burns requests. --wait and --watch stop there and exit zero, because a
-// non-zero exit invites a retry, and retrying a broadcast can double-spend.
+// unconfirmed is terminal for a client: nothing moves it until the reconciler runs on its own
+// schedule, so polling past it only burns requests. --wait and --watch stop there and exit zero,
+// because a non-zero exit invites a retry, and retrying a broadcast can double-spend.
 var execTerminalStatuses = map[string]bool{
-	"completed":   true,
-	"failed":      true,
-	"unconfirmed": true,
+	"completed":           true,
+	"failed":              true,
+	execStatusUnconfirmed: true,
 }
 
 // noTransactionNote labels a completed execution that put nothing onchain.
 const noTransactionNote = "none submitted"
+
+// printUnconfirmedNotice reports an unconfirmed execution on stderr: which
+// transaction was broadcast, and that the reconciler is still watching it so
+// the execution can be re-checked later.
+func printUnconfirmedNotice(f *cmdutil.Factory, executionID string, txHash *string) {
+	hash := "not reported"
+	if txHash != nil && *txHash != "" {
+		hash = *txHash
+	}
+	fmt.Fprintf(f.IOStreams.ErrOut,
+		"execution %s is unconfirmed: transaction %s was broadcast but no receipt could be read yet.\nThe reconciler is still watching it - re-check later with: kh ex st %s\n",
+		executionID, hash, executionID)
+}
+
+// terminalExecError reports a terminal status that did not succeed.
+//
+// Two paths reach a terminal status: the write response can already carry one,
+// and pollExecStatus reads one from the status endpoint. Both must classify it
+// the same way. They did not, so a write that failed fast exited zero while the
+// identical failure discovered one poll later exited non-zero.
+//
+// apiErr is nil on the write path, whose response carries no error detail.
+func terminalExecError(executionID, status string, apiErr *string) error {
+	if status != "failed" {
+		return nil
+	}
+	if apiErr != nil && *apiErr != "" {
+		return fmt.Errorf("%s", *apiErr)
+	}
+	return fmt.Errorf("execution %s failed", executionID)
+}
 
 func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
@@ -120,7 +155,16 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			if execTerminalStatuses[execResp.Status] && !completedWithoutTransaction(execResp.Status, execResp.TransactionHash) {
-				return printTransferResult(p, &execResp)
+				if err := terminalExecError(execResp.ExecutionID, execResp.Status, nil); err != nil {
+					return err
+				}
+				if err := printTransferResult(p, &execResp); err != nil {
+					return err
+				}
+				if execResp.Status == execStatusUnconfirmed {
+					printUnconfirmedNotice(f, execResp.ExecutionID, execResp.TransactionHash)
+				}
+				return nil
 			}
 
 			return pollExecStatus(f, client, host, execResp.ExecutionID, timeout, p)
@@ -163,14 +207,16 @@ func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID
 		}
 
 		if execTerminalStatuses[statusResp.Status] || serverSaysTerminal {
-			if statusResp.Status == "failed" {
-				msg := fmt.Sprintf("execution %s failed", executionID)
-				if statusResp.Error != nil {
-					msg = *statusResp.Error
-				}
-				return fmt.Errorf("%s", msg)
+			if err := terminalExecError(executionID, statusResp.Status, statusResp.Error); err != nil {
+				return err
 			}
-			return printExecStatusResult(p, statusResp)
+			if err := printExecStatusResult(p, statusResp); err != nil {
+				return err
+			}
+			if statusResp.Status == execStatusUnconfirmed {
+				printUnconfirmedNotice(f, executionID, statusResp.TransactionHash)
+			}
+			return nil
 		}
 
 		if time.Now().After(deadline) {

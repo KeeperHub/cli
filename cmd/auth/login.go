@@ -56,13 +56,18 @@ Prints a URL and a one-time code. Open the URL in any browser (the browser
 does not open automatically — copy the URL from the terminal) and enter the
 code to complete sign-in. Codes expire after 15 minutes.
 Use --with-token to read an API key from stdin for non-interactive automation.
+Redirect it from a file or pipe it from a secret manager. Passing the key inline
+records it in your shell history, where it stays after the session ends.
 
 See also: kh auth status, kh auth logout`,
 		Example: `  # Log in (device code flow)
   kh auth login
 
   # Log in with an API key (non-interactive)
-  echo "kh_xxx" | kh auth login --with-token`,
+  kh auth login --with-token < api-key.txt
+
+  # Log in with an API key held in a secret manager
+  op read "op://vault/keeperhub/api-key" | kh auth login --with-token`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hosts, err := config.ReadHosts()
 			if err != nil {
