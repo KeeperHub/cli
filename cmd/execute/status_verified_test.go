@@ -23,10 +23,12 @@ func serveStatus(t *testing.T, resp execute.ExecStatusResponse) *httptest.Server
 	}))
 }
 
+func ptrInt(v int) *int { return &v }
+
 func verifiedReceipt(hash string) execute.ExecReceipt {
 	return execute.ExecReceipt{
 		Hash:          hash,
-		ChainID:       84532,
+		ChainID:       ptrInt(84532),
 		Verified:      true,
 		ReceiptStatus: "success",
 	}
@@ -89,7 +91,7 @@ func TestExecStatusCmd_RequireVerified_FailsWhenReceiptUnverified(t *testing.T) 
 		Status:      "completed",
 		Receipts: []execute.ExecReceipt{{
 			Hash:          "0xdead",
-			ChainID:       84532,
+			ChainID:       ptrInt(84532),
 			Verified:      false,
 			ReceiptStatus: "success",
 		}},
@@ -119,7 +121,7 @@ func TestExecStatusCmd_RequireVerified_FailsWhenReceiptNotSuccess(t *testing.T) 
 				Status:      "completed",
 				Receipts: []execute.ExecReceipt{{
 					Hash:          "0xbeef",
-					ChainID:       84532,
+					ChainID:       ptrInt(84532),
 					Verified:      true,
 					ReceiptStatus: rs,
 				}},
@@ -364,7 +366,7 @@ func TestExecStatusCmd_ReceiptWithoutStatus_RendersUnknown(t *testing.T) {
 		Status:      "completed",
 		Receipts: []execute.ExecReceipt{{
 			Hash:     "0xabc",
-			ChainID:  84532,
+			ChainID:  ptrInt(84532),
 			Verified: true,
 		}},
 	})

@@ -41,8 +41,8 @@ func main() {
 // pruneGeneratedPages removes the generated command reference from dir.
 //
 // Only `kh*.md` is touched: the hand-written guides (quickstart.md,
-// concepts.md) and the generator's own sources live alongside it and must
-// survive.
+// concepts.md, execution-recovery.md) and the generator's own sources live
+// alongside it and must survive.
 func pruneGeneratedPages(dir string) error {
 	matches, err := filepath.Glob(filepath.Join(dir, "kh*.md"))
 	if err != nil {

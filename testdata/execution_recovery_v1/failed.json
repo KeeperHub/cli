@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "kind": "observed",
+  "rule": "R4",
+  "httpStatus": 200,
+  "requireChainEvidence": false,
+  "expect": "failure",
+  "response": {
+    "executionId": "exec_fixture_failed_001",
+    "status": "failed",
+    "error": "simulation reverted: insufficient funds"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "observed",
+  "rule": "R6",
+  "httpStatus": 404,
+  "requireChainEvidence": false,
+  "expect": "pending",
+  "response": {
+    "error": "Execution not found"
+  },
+  "note": "Observed GET /api/execute/{id}/status 404 body. Classify treats a single 404 as pending (cold-start). Exhausted --wait budget is a caller-level failure. --watch treats 404 as a terminal error (mistyped or foreign-org id)."
+}

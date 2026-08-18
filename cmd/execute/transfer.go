@@ -1,13 +1,14 @@
 package execute
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/keeperhub/cli/internal/execrecovery"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
@@ -27,16 +28,16 @@ type transferResponse struct {
 	TransactionHash *string `json:"transactionHash,omitempty"`
 }
 
-// execStatusUnconfirmed is terminal: the transaction was broadcast but its
-// receipt could not be read within the API's lookup budget. The server-side
-// reconciler keeps watching it, so the execution can be re-checked later.
+// execStatusUnconfirmed is terminal for the CLI wait/watch loops.
+//
+// It is not terminal on the server: a reconciliation sweep still settles that
+// row to completed or failed once the chain answers. The CLI stops on it
+// anyway and reports it, rather than polling to a non-zero timeout, because a
+// non-zero exit invites a re-run that broadcasts a second transaction for an
+// intent that may already be on chain. Read the settled status later with
+// `kh ex st <id>`.
 const execStatusUnconfirmed = "unconfirmed"
 
-// execTerminalStatuses are the statuses a poll loop stops on.
-//
-// unconfirmed is terminal for a client: nothing moves it until the reconciler runs on its own
-// schedule, so polling past it only burns requests. --wait and --watch stop there and exit zero,
-// because a non-zero exit invites a retry, and retrying a broadcast can double-spend.
 var execTerminalStatuses = map[string]bool{
 	"completed":           true,
 	"failed":              true,
@@ -59,14 +60,8 @@ func printUnconfirmedNotice(f *cmdutil.Factory, executionID string, txHash *stri
 		executionID, hash, executionID)
 }
 
-// terminalExecError reports a terminal status that did not succeed.
-//
-// Two paths reach a terminal status: the write response can already carry one,
-// and pollExecStatus reads one from the status endpoint. Both must classify it
-// the same way. They did not, so a write that failed fast exited zero while the
-// identical failure discovered one poll later exited non-zero.
-//
-// apiErr is nil on the write path, whose response carries no error detail.
+// terminalExecError reports a terminal status that did not succeed on the
+// write-response path, which carries no receipt or error detail.
 func terminalExecError(executionID, status string, apiErr *string) error {
 	if status != "failed" {
 		return nil
@@ -105,6 +100,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 			tokenAddress, _ := cmd.Flags().GetString("token-address")
 			wait, _ := cmd.Flags().GetBool("wait")
 			timeout, _ := cmd.Flags().GetDuration("timeout")
+			idemKeyFlag, _ := cmd.Flags().GetString("idempotency-key")
 
 			body := transferRequest{
 				Network:          chain,
@@ -123,13 +119,13 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 				return fmt.Errorf("marshalling request: %w", err)
 			}
 
-			req, err := client.NewRequest(http.MethodPost, khhttp.BuildBaseURL(host)+"/api/execute/transfer", bytes.NewReader(bodyBytes))
+			idemKey, err := execrecovery.ResolveIdempotencyKey(idemKeyFlag)
 			if err != nil {
 				return err
 			}
-			req.Header.Set("Content-Type", "application/json")
 
-			resp, err := client.Do(req)
+			deadline := time.Now().Add(timeout)
+			resp, err := postIdempotentJSON(client, khhttp.BuildBaseURL(host)+"/api/execute/transfer", bodyBytes, idemKey, deadline)
 			if err != nil {
 				return err
 			}
@@ -178,6 +174,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().String("token-address", "", "ERC-20 token contract address")
 	cmd.Flags().Bool("wait", false, "Wait for completion")
 	cmd.Flags().Duration("timeout", 5*time.Minute, "Timeout when using --wait")
+	cmd.Flags().String("idempotency-key", "", "Stable Idempotency-Key for this write intent (auto-generated if empty)")
 
 	_ = cmd.MarkFlagRequired("chain")
 	_ = cmd.MarkFlagRequired("to")
@@ -203,11 +200,27 @@ func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID
 	for {
 		statusResp, delay, serverSaysTerminal, err := fetchExecStatus(client, host, executionID)
 		if err != nil {
+			var apiErr *khhttp.APIError
+			// R6: tolerate cold-start 404 until the wait deadline.
+			if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+				if time.Now().After(deadline) {
+					return fmt.Errorf("timeout after %s: execution %s not found", timeout, executionID)
+				}
+				delay = defaultPollInterval
+				if remaining := time.Until(deadline); delay > remaining {
+					delay = remaining
+				}
+				if delay > 0 {
+					time.Sleep(delay)
+				}
+				continue
+			}
 			return err
 		}
 
 		if execTerminalStatuses[statusResp.Status] || serverSaysTerminal {
-			if err := terminalExecError(executionID, statusResp.Status, statusResp.Error); err != nil {
+			if err := execOutcomeError(statusResp); err != nil {
+				_ = printExecStatusResult(p, statusResp)
 				return err
 			}
 			if err := printExecStatusResult(p, statusResp); err != nil {
@@ -290,6 +303,34 @@ func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
 		if completedWithoutTransaction(sr.Status, sr.TransactionHash) {
 			tw.AppendRow(table.Row{"Transaction", noTransactionNote})
 		}
+		for i, r := range sr.Receipts {
+			tw.AppendRow(table.Row{fmt.Sprintf("Receipt[%d]", i), fmt.Sprintf("%s verified=%v status=%s", r.Hash, r.Verified, r.ReceiptStatus)})
+		}
 		tw.Render()
 	})
+}
+
+// execOutcomeError returns a non-nil error for failed terminal states and for
+// any receipt that is not explicitly successful when the run has completed, or
+// for a conclusive on-chain failure (reverted / safe_inner_failure) at any
+// status. not_found / timeout receipts leave `unconfirmed` a zero-exit
+// outcome: the server treats those as unread, not failed, so erroring here
+// would invite the re-run that double-broadcasts.
+func execOutcomeError(sr *ExecStatusResponse) error {
+	if sr.Status == "failed" {
+		msg := fmt.Sprintf("execution %s failed", sr.ExecutionID)
+		if sr.Error != nil && *sr.Error != "" {
+			msg = *sr.Error
+		}
+		return fmt.Errorf("%s", msg)
+	}
+	for _, r := range sr.Receipts {
+		if execrecovery.ConclusiveFailedReceipt(r.ReceiptStatus) {
+			return fmt.Errorf("execution %s receipt %s status=%s", sr.ExecutionID, r.Hash, r.ReceiptStatus)
+		}
+		if sr.Status == "completed" && execrecovery.NonSuccessReceipt(r) {
+			return fmt.Errorf("execution %s completed with non-success receipt %s status=%s", sr.ExecutionID, r.Hash, r.ReceiptStatus)
+		}
+	}
+	return nil
 }

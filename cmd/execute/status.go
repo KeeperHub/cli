@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/keeperhub/cli/internal/execrecovery"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/internal/output"
 	"github.com/keeperhub/cli/pkg/cmdutil"
@@ -44,33 +45,12 @@ func nextPollDelay(resp *http.Response) (time.Duration, bool) {
 	return time.Duration(min(secs, maxPollIntervalSecs)) * time.Second, false
 }
 
-// ExecStatusResponse represents the execution status API response.
-// Shared by transfer, contract-call and status commands.
-type ExecStatusResponse struct {
-	ExecutionID     string        `json:"executionId"`
-	Status          string        `json:"status"`
-	Type            string        `json:"type"`
-	TransactionHash *string       `json:"transactionHash"`
-	TransactionLink *string       `json:"transactionLink"`
-	Result          any           `json:"result"`
-	Error           *string       `json:"error"`
-	CreatedAt       string        `json:"createdAt"`
-	CompletedAt     *string       `json:"completedAt"`
-	Receipts        []ExecReceipt `json:"receipts"`
-}
+// ExecStatusResponse is the GET /api/execute/{id}/status wire type.
+// Canonical definition: execrecovery.DirectStatus.
+type ExecStatusResponse = execrecovery.DirectStatus
 
-// ExecReceipt is a chain-re-fetched proof entry attached to an execution.
-// A transactionHash alone proves a transaction was submitted; a receipt with
-// verified=true and receiptStatus="success" proves it landed onchain.
-type ExecReceipt struct {
-	Hash          string  `json:"hash"`
-	ChainID       int64   `json:"chainId"`
-	Verified      bool    `json:"verified"`
-	ReceiptStatus string  `json:"receiptStatus"`
-	BlockNumber   *int64  `json:"blockNumber,omitempty"`
-	GasUsed       *string `json:"gasUsed,omitempty"`
-	VerifiedAt    *string `json:"verifiedAt,omitempty"`
-}
+// ExecReceipt is DirectExecutionReceiptEntry on the wire.
+type ExecReceipt = execrecovery.Receipt
 
 func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
@@ -182,12 +162,8 @@ func renderExecStatus(p *output.Printer, f *cmdutil.Factory, sr *ExecStatusRespo
 		printUnconfirmedNotice(f, sr.ExecutionID, sr.TransactionHash)
 	}
 
-	if sr.Status == "failed" {
-		msg := fmt.Sprintf("execution %s failed", sr.ExecutionID)
-		if sr.Error != nil && *sr.Error != "" {
-			msg = *sr.Error
-		}
-		return fmt.Errorf("%s", msg)
+	if err := execOutcomeError(sr); err != nil {
+		return err
 	}
 
 	return nil
@@ -236,6 +212,8 @@ func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionI
 	for {
 		sr, delay, serverSaysTerminal, err := fetchExecStatus(client, host, executionID)
 		if err != nil {
+			// HTTP 404 is terminal for --watch (mistyped id / other org).
+			// Cold-start 404 tolerance lives only in pollExecStatus (--wait).
 			return err
 		}
 

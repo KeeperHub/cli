@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "observed",
+  "rule": "R1",
+  "httpStatus": 200,
+  "requireChainEvidence": false,
+  "expect": "unconfirmed",
+  "response": {
+    "executionId": "exec_fixture_unconfirmed_001",
+    "status": "unconfirmed",
+    "transactionHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+    "receipts": [
+      {
+        "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "verified": false,
+        "receiptStatus": "not_found",
+        "verifiedAt": "2026-08-11T00:00:30.000Z"
+      }
+    ],
+    "createdAt": "2026-08-11T00:00:00.000Z"
+  },
+  "note": "Broadcast but the receipt was unreadable. The server settles unconfirmed, not failed, and a reconciliation sweep finishes the row later. Wait paths stop here and exit zero; never resubmit this intent. Read the settled status later against the same executionId."
+}

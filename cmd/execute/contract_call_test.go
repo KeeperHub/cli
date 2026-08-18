@@ -6,11 +6,13 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/keeperhub/cli/cmd/execute"
 	"github.com/keeperhub/cli/internal/config"
+	"github.com/keeperhub/cli/internal/execrecovery"
 	khhttp "github.com/keeperhub/cli/internal/http"
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/keeperhub/cli/pkg/iostreams"
@@ -20,7 +22,7 @@ func newContractCallFactory(ios *iostreams.IOStreams, srv *httptest.Server) *cmd
 	client := khhttp.NewClient(khhttp.ClientOptions{
 		Host:       srv.URL,
 		AppVersion: "test",
-		IOStreams:   ios,
+		IOStreams:  ios,
 	})
 	return &cmdutil.Factory{
 		IOStreams: ios,
@@ -301,6 +303,159 @@ func TestContractCallCmd_WaitWritePolls(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, "0xtxhash") {
 		t.Errorf("expected tx hash in output, got: %q", out)
+	}
+}
+
+func TestContractCallCmd_SendsIdempotencyKey(t *testing.T) {
+	var gotKey string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotKey = r.Header.Get(execrecovery.IdempotencyHeader)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-cc-idem","status":"completed"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newContractCallFactory(ios, srv)
+	cmd := execute.NewContractCallCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--contract", "0xcontract", "--method", "transfer", "--idempotency-key", "stable-cc-1"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotKey != "stable-cc-1" {
+		t.Fatalf("Idempotency-Key=%q, want stable-cc-1", gotKey)
+	}
+}
+
+func TestContractCallCmd_IdempotencyKeyStableAcrossHTTPRetries(t *testing.T) {
+	var keys []string
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		keys = append(keys, r.Header.Get(execrecovery.IdempotencyHeader))
+		if n == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-cc-retry","status":"completed"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newContractCallFactory(ios, srv)
+	cmd := execute.NewContractCallCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--contract", "0xcontract", "--method", "transfer", "--idempotency-key", "retry-stable-cc"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls.Load() < 2 {
+		t.Fatalf("expected HTTP retry, got %d calls", calls.Load())
+	}
+	for i, k := range keys {
+		if k != "retry-stable-cc" {
+			t.Fatalf("call %d Idempotency-Key=%q, want retry-stable-cc", i, k)
+		}
+	}
+}
+
+func TestContractCallCmd_IdempotencyKeyStableAcross504(t *testing.T) {
+	var keys []string
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		keys = append(keys, r.Header.Get(execrecovery.IdempotencyHeader))
+		if n == 1 {
+			w.WriteHeader(http.StatusGatewayTimeout)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-cc-504","status":"completed"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newContractCallFactory(ios, srv)
+	cmd := execute.NewContractCallCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--contract", "0xcontract", "--method", "transfer", "--idempotency-key", "cc-504"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls.Load() < 2 {
+		t.Fatalf("expected HTTP retry, got %d calls", calls.Load())
+	}
+	for i, k := range keys {
+		if k != "cc-504" {
+			t.Fatalf("call %d key=%q", i, k)
+		}
+	}
+}
+
+func TestContractCallCmd_IdempotencyInProgressRetriesSameKey(t *testing.T) {
+	var keys []string
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		keys = append(keys, r.Header.Get(execrecovery.IdempotencyHeader))
+		w.Header().Set("Content-Type", "application/json")
+		if n == 1 {
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`{"error":"in flight","code":"idempotency_in_progress","retryable":true}`))
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"executionId":"exec-cc-inprog","status":"completed"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newContractCallFactory(ios, srv)
+	cmd := execute.NewContractCallCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--contract", "0xcontract", "--method", "transfer", "--idempotency-key", "cc-inprog", "--timeout", "10s"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("got %d POSTs, want 2", calls.Load())
+	}
+	for i, k := range keys {
+		if k != "cc-inprog" {
+			t.Fatalf("call %d key=%q", i, k)
+		}
+	}
+}
+
+func TestContractCallCmd_IdempotencyConflictFails(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":"Idempotency-Key was reused with a different request payload.","code":"idempotency_conflict","retryable":false}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newContractCallFactory(ios, srv)
+	cmd := execute.NewContractCallCmd(f)
+	cmd.SetArgs([]string{"--chain", "1", "--contract", "0xcontract", "--method", "transfer", "--idempotency-key", "cc-conflict"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected conflict")
+	}
+	if !strings.Contains(err.Error(), "do not retry with a new key") {
+		t.Fatalf("got %v", err)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("got %d POSTs, want 1", calls.Load())
 	}
 }
 

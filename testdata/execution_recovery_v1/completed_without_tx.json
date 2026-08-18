@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "classifier",
+  "rule": "R2",
+  "httpStatus": 200,
+  "requireChainEvidence": true,
+  "expect": "failure",
+  "response": {
+    "executionId": "exec_fixture_no_tx_001",
+    "status": "completed",
+    "completedAt": "2026-08-11T00:01:00.000Z"
+  },
+  "note": "Classifier-only: RequireChainEvidence is not set by the shipped CLI. Production wait paths still treat completed with no receipts as success."
+}

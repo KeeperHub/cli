@@ -19,7 +19,7 @@ func newStatusFactory(ios *iostreams.IOStreams, srv *httptest.Server) *cmdutil.F
 	client := khhttp.NewClient(khhttp.ClientOptions{
 		Host:       srv.URL,
 		AppVersion: "test",
-		IOStreams:   ios,
+		IOStreams:  ios,
 	})
 	return &cmdutil.Factory{
 		IOStreams: ios,
@@ -203,5 +203,110 @@ func TestExecStatusCmd_Watch_PollsUntilTerminal(t *testing.T) {
 	out := buf.String()
 	if !strings.Contains(out, "0xtxhash789") {
 		t.Errorf("expected tx hash in final output, got: %q", out)
+	}
+}
+
+func TestExecStatusCmd_Watch_404Fails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Execution not found"}`))
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+	cmd := execute.NewStatusCmd(f)
+	cmd.SetArgs([]string{"missing-id", "--watch"})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Execute()
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected 404 to terminate --watch")
+		}
+		if !strings.Contains(err.Error(), "404") && !strings.Contains(err.Error(), "not found") {
+			t.Fatalf("got %v", err)
+		}
+	case <-time.After(8 * time.Second):
+		t.Fatal("--watch spun on 404 instead of failing")
+	}
+}
+
+func TestExecStatusCmd_Watch_JSON404Fails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Execution not found"}`))
+	}))
+	defer srv.Close()
+
+	ios, buf, _, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+	cmd := execute.NewStatusCmd(f)
+	cmd.Flags().Bool("json", false, "Output as JSON")
+	cmd.SetArgs([]string{"foreign-org-id", "--watch", "--json"})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Execute()
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected 404 to terminate --watch --json")
+		}
+		if strings.TrimSpace(buf.String()) != "" && !strings.Contains(err.Error(), "404") && !strings.Contains(err.Error(), "not found") {
+			t.Fatalf("err=%v out=%q", err, buf.String())
+		}
+	case <-time.After(8 * time.Second):
+		t.Fatal("--watch --json spun on 404")
+	}
+}
+
+func TestExecStatusCmd_Watch_FailedStatus(t *testing.T) {
+	callCount := 0
+	errMsg := "reverted on-chain"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		resp := execute.ExecStatusResponse{
+			ExecutionID: "exec-fail-watch",
+			Status:      "failed",
+			Error:       &errMsg,
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	ios, _, _, _ := iostreams.Test()
+	f := newStatusFactory(ios, srv)
+	cmd := execute.NewStatusCmd(f)
+	cmd.SetArgs([]string{"exec-fail-watch", "--watch"})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Execute()
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected failed status to return error")
+		}
+		if !strings.Contains(err.Error(), "reverted on-chain") {
+			t.Fatalf("got %v", err)
+		}
+	case <-time.After(8 * time.Second):
+		t.Fatal("timed out")
+	}
+	if callCount < 1 {
+		t.Fatal("expected at least one poll")
 	}
 }

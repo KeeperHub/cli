@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "defensive",
+  "rule": "R2",
+  "httpStatus": 200,
+  "requireChainEvidence": false,
+  "expect": "failure",
+  "response": {
+    "executionId": "exec_fixture_safe_inner_001",
+    "status": "completed",
+    "transactionHash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+    "receipts": [
+      {
+        "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "verified": false,
+        "receiptStatus": "safe_inner_failure",
+        "verifiedAt": "2026-08-11T00:01:00.000Z"
+      }
+    ],
+    "completedAt": "2026-08-11T00:01:00.000Z"
+  },
+  "note": "DEFENSIVE. safe_inner_failure is a conclusive non-success receipt (verify-receipt.ts). KEEP-966 would settle the row as failed; the client must still not treat completed as success."
+}
