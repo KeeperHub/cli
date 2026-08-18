@@ -2,6 +2,9 @@ package execute
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -11,6 +14,36 @@ import (
 	"github.com/keeperhub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
+
+// defaultPollInterval is used when the server sends no polling hint.
+const defaultPollInterval = 2 * time.Second
+
+// maxPollIntervalSecs caps the server's hint. watchExecStatus has no deadline, so an oversized or
+// hostile hint would otherwise park the loop for as long as the server asked.
+const maxPollIntervalSecs = 30
+
+// nextPollDelay reads the X-Poll-Interval-Hint response header, which the Direct Execution API
+// documents as the number of seconds to wait before polling again. Honouring it lets the server
+// pace clients instead of every client polling on its own fixed timer. The hint is clamped to
+// maxPollIntervalSecs so it can slow a caller down but not stall it.
+//
+// A hint of 0 means the execution has reached a terminal state, reported here as (0, true) so a
+// caller stops rather than sleeping for zero and spinning. A negative or unparseable hint falls
+// back to the default rather than yielding a zero delay the loop would spin on.
+func nextPollDelay(resp *http.Response) (time.Duration, bool) {
+	raw := strings.TrimSpace(resp.Header.Get("X-Poll-Interval-Hint"))
+	if raw == "" {
+		return defaultPollInterval, false
+	}
+	secs, err := strconv.Atoi(raw)
+	if err != nil || secs < 0 {
+		return defaultPollInterval, false
+	}
+	if secs == 0 {
+		return 0, true
+	}
+	return time.Duration(min(secs, maxPollIntervalSecs)) * time.Second, false
+}
 
 // ExecStatusResponse is the GET /api/execute/{id}/status wire type.
 // Canonical definition: execrecovery.DirectStatus.
@@ -66,7 +99,7 @@ See also: kh r st, kh ex transfer, kh ex cc`,
 			p := output.NewPrinter(f.IOStreams, cmd)
 
 			if !watch {
-				sr, fetchErr := fetchExecStatus(client, host, executionID)
+				sr, _, _, fetchErr := fetchExecStatus(client, host, executionID)
 				if fetchErr != nil {
 					return fetchErr
 				}
@@ -95,6 +128,9 @@ func renderExecStatus(p *output.Printer, f *cmdutil.Factory, sr *ExecStatusRespo
 		}
 		if sr.TransactionLink != nil && *sr.TransactionLink != "" {
 			tw.AppendRow(table.Row{"TX Link", *sr.TransactionLink})
+		}
+		if completedWithoutTransaction(sr.Status, sr.TransactionHash) {
+			tw.AppendRow(table.Row{"Transaction", noTransactionNote})
 		}
 		if sr.CreatedAt != "" {
 			tw.AppendRow(table.Row{"Created", sr.CreatedAt})
@@ -172,31 +208,28 @@ func verifyExecReceipts(sr *ExecStatusResponse) error {
 
 func watchExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID string, requireVerified bool, p *output.Printer) error {
 	isTTY := f.IOStreams.IsTerminal()
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
 
 	for {
-		select {
-		case <-ticker.C:
-			sr, err := fetchExecStatus(client, host, executionID)
-			if err != nil {
-				// HTTP 404 is terminal for --watch (mistyped id / other org).
-				// Cold-start 404 tolerance lives only in pollExecStatus (--wait).
-				return err
-			}
+		sr, delay, serverSaysTerminal, err := fetchExecStatus(client, host, executionID)
+		if err != nil {
+			// HTTP 404 is terminal for --watch (mistyped id / other org).
+			// Cold-start 404 tolerance lives only in pollExecStatus (--wait).
+			return err
+		}
 
+		if isTTY && !p.IsJSON() {
+			fmt.Fprintf(f.IOStreams.Out, "\r%s  %s", executionID, sr.Status)
+		}
+
+		if execTerminalStatuses[sr.Status] || serverSaysTerminal {
 			if isTTY && !p.IsJSON() {
-				fmt.Fprintf(f.IOStreams.Out, "\r%s  %s", executionID, sr.Status)
+				fmt.Fprintln(f.IOStreams.Out)
 			}
+			return renderExecStatusChecked(p, f, sr, requireVerified)
+		}
 
-			if execTerminalStatuses[sr.Status] {
-				if isTTY && !p.IsJSON() {
-					fmt.Fprintln(f.IOStreams.Out)
-				}
-				return renderExecStatusChecked(p, f, sr, requireVerified)
-			}
-		default:
-			time.Sleep(50 * time.Millisecond)
+		if delay > 0 {
+			time.Sleep(delay)
 		}
 	}
 }

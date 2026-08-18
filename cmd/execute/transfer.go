@@ -44,6 +44,9 @@ var execTerminalStatuses = map[string]bool{
 	execStatusUnconfirmed: true,
 }
 
+// noTransactionNote labels a completed execution that put nothing onchain.
+const noTransactionNote = "none submitted"
+
 // printUnconfirmedNotice reports an unconfirmed execution on stderr: which
 // transaction was broadcast, and that the reconciler is still watching it so
 // the execution can be re-checked later.
@@ -147,7 +150,7 @@ func NewTransferCmd(f *cmdutil.Factory) *cobra.Command {
 				})
 			}
 
-			if execTerminalStatuses[execResp.Status] {
+			if execTerminalStatuses[execResp.Status] && !completedWithoutTransaction(execResp.Status, execResp.TransactionHash) {
 				if err := terminalExecError(execResp.ExecutionID, execResp.Status, nil); err != nil {
 					return err
 				}
@@ -193,73 +196,98 @@ func printTransferResult(p *output.Printer, execResp *transferResponse) error {
 
 func pollExecStatus(f *cmdutil.Factory, client *khhttp.Client, host, executionID string, timeout time.Duration, p *output.Printer) error {
 	deadline := time.Now().Add(timeout)
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
 
 	for {
-		select {
-		case <-ticker.C:
-			statusResp, err := fetchExecStatus(client, host, executionID)
-			if err != nil {
-				var apiErr *khhttp.APIError
-				// R6: tolerate cold-start 404 until the wait deadline.
-				if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
-					if time.Now().After(deadline) {
-						return fmt.Errorf("timeout after %s: execution %s not found", timeout, executionID)
-					}
-					continue
+		statusResp, delay, serverSaysTerminal, err := fetchExecStatus(client, host, executionID)
+		if err != nil {
+			var apiErr *khhttp.APIError
+			// R6: tolerate cold-start 404 until the wait deadline.
+			if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+				if time.Now().After(deadline) {
+					return fmt.Errorf("timeout after %s: execution %s not found", timeout, executionID)
 				}
+				delay = defaultPollInterval
+				if remaining := time.Until(deadline); delay > remaining {
+					delay = remaining
+				}
+				if delay > 0 {
+					time.Sleep(delay)
+				}
+				continue
+			}
+			return err
+		}
+
+		if execTerminalStatuses[statusResp.Status] || serverSaysTerminal {
+			if err := execOutcomeError(statusResp); err != nil {
+				_ = printExecStatusResult(p, statusResp)
 				return err
 			}
+			if err := printExecStatusResult(p, statusResp); err != nil {
+				return err
+			}
+			if statusResp.Status == execStatusUnconfirmed {
+				printUnconfirmedNotice(f, executionID, statusResp.TransactionHash)
+			}
+			return nil
+		}
 
-			if execTerminalStatuses[statusResp.Status] {
-				if err := execOutcomeError(statusResp); err != nil {
-					_ = printExecStatusResult(p, statusResp)
-					return err
-				}
-				if err := printExecStatusResult(p, statusResp); err != nil {
-					return err
-				}
-				if statusResp.Status == execStatusUnconfirmed {
-					printUnconfirmedNotice(f, executionID, statusResp.TransactionHash)
-				}
-				return nil
-			}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout after %s: execution %s still %s", timeout, executionID, statusResp.Status)
+		}
 
-			if time.Now().After(deadline) {
-				return fmt.Errorf("timeout after %s: execution %s still %s", timeout, executionID, statusResp.Status)
-			}
-		default:
-			if time.Now().After(deadline) {
-				return fmt.Errorf("timeout after %s: execution %s timed out", timeout, executionID)
-			}
-			time.Sleep(50 * time.Millisecond)
+		// Wait as long as the server asked, but never past the caller's deadline.
+		if remaining := time.Until(deadline); delay > remaining {
+			delay = remaining
+		}
+		if delay > 0 {
+			time.Sleep(delay)
 		}
 	}
 }
 
-func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStatusResponse, error) {
+// fetchExecStatus returns the execution status, the delay the server asked us to wait before
+// polling again, and whether the server declared the execution terminal via a hint of 0.
+func fetchExecStatus(client *khhttp.Client, host, executionID string) (*ExecStatusResponse, time.Duration, bool, error) {
 	url := khhttp.BuildBaseURL(host) + "/api/execute/" + executionID + "/status"
 	req, err := client.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, false, err
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, false, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, khhttp.NewAPIError(resp)
+		return nil, 0, false, khhttp.NewAPIError(resp)
 	}
+
+	delay, serverSaysTerminal := nextPollDelay(resp)
 
 	var sr ExecStatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&sr); err != nil {
-		return nil, fmt.Errorf("decoding status response: %w", err)
+		return nil, 0, false, fmt.Errorf("decoding status response: %w", err)
 	}
-	return &sr, nil
+	return &sr, delay, serverSaysTerminal, nil
+}
+
+// completedWithoutTransaction reports an execution that reached "completed" carrying no
+// transaction hash.
+//
+// On a direct-write response it means one status fetch is worth making: a successful
+// /api/execute/contract-call broadcast can return 202 with status "completed" and no
+// transactionHash, because the hash only appears on the status endpoint, so --wait would
+// otherwise report a completion the caller cannot tie to a transaction.
+//
+// On a status response it is not an error. Any action that submits nothing onchain - a read-only
+// contract call, a non-transaction plugin step - completes exactly this way by design, so the
+// condition is reported in the output and the exit code is left alone. Failing on it is opt-in
+// behaviour and belongs behind an explicit flag.
+func completedWithoutTransaction(status string, txHash *string) bool {
+	return status == "completed" && (txHash == nil || *txHash == "")
 }
 
 func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
@@ -271,6 +299,9 @@ func printExecStatusResult(p *output.Printer, sr *ExecStatusResponse) error {
 		}
 		if sr.TransactionLink != nil && *sr.TransactionLink != "" {
 			tw.AppendRow(table.Row{"TX Link", *sr.TransactionLink})
+		}
+		if completedWithoutTransaction(sr.Status, sr.TransactionHash) {
+			tw.AppendRow(table.Row{"Transaction", noTransactionNote})
 		}
 		for i, r := range sr.Receipts {
 			tw.AppendRow(table.Row{fmt.Sprintf("Receipt[%d]", i), fmt.Sprintf("%s verified=%v status=%s", r.Hash, r.Verified, r.ReceiptStatus)})
