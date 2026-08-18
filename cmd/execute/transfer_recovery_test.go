@@ -275,9 +275,6 @@ func TestTransferCmd_IdempotencyConflictFailsWithoutNewKey(t *testing.T) {
 	if !strings.Contains(err.Error(), "idempotency") && !strings.Contains(err.Error(), "different request payload") {
 		t.Fatalf("got %v", err)
 	}
-	if strings.Contains(err.Error(), "rotate") && strings.Contains(err.Error(), "new key for a different") {
-		// server message mentions a new key for a *different* request; we must still refuse auto-rotate
-	}
 	if !strings.Contains(err.Error(), "do not retry with a new key") {
 		t.Fatalf("conflict must tell the user not to mint a new key: %v", err)
 	}
