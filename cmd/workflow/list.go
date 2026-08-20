@@ -190,6 +190,9 @@ scope the (possibly paginated) query to one project or tag.`, maxListPageSize, m
 			if err != nil {
 				return err
 			}
+			if limit < 1 {
+				return cmdutil.FlagError{Err: fmt.Errorf("--limit must be at least 1, got %d", limit)}
+			}
 
 			project, err := cmd.Flags().GetString("project")
 			if err != nil {

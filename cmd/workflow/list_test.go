@@ -348,6 +348,30 @@ func TestListCmd_AllRespectsExplicitLimit(t *testing.T) {
 	assert.Len(t, got, 2, "expected an explicit --limit to still cap --all's result")
 }
 
+func TestListCmd_RejectsLimitBelowOne(t *testing.T) {
+	for _, limit := range []string{"0", "-5"} {
+		t.Run(limit, func(t *testing.T) {
+			called := false
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode([]interface{}{})
+			}))
+			defer server.Close()
+
+			ios, _, _, _ := iostreams.Test()
+			f := newWFListFactory(server, ios)
+
+			wfCmd := workflow.NewWorkflowCmd(f)
+			wfCmd.SetArgs([]string{"ls", "--limit", limit})
+			err := wfCmd.Execute()
+
+			require.Error(t, err, "expected --limit %s to be rejected", limit)
+			assert.False(t, called, "expected no request to be sent for an invalid --limit")
+		})
+	}
+}
+
 func TestListCmd_AllCanBeScopedToProject(t *testing.T) {
 	var all []map[string]interface{}
 	for i := 0; i < 5; i++ {
