@@ -41,13 +41,15 @@ func workflowStatus(enabled bool) string {
 const maxListPageSize = 200
 
 // fetchWorkflowPage performs one GET /api/workflows request at the given
-// offset and decodes the result. limit is clamped to maxListPageSize before
-// being sent, since the API rejects anything higher with a 400.
+// offset and decodes the result. The caller must keep limit within
+// [1, maxListPageSize]; fetchWorkflows, the only caller, already guarantees
+// this. limit is intentionally not clamped here: fetchWorkflows decides
+// end-of-list by comparing the page it gets back against the pageSize it
+// asked for, so silently sending a smaller limit than the caller requested
+// would make a truncated page indistinguishable from the real end of the
+// list. An out-of-range limit should surface as the 400 the API already
+// returns for it, not be masked.
 func fetchWorkflowPage(client *khhttp.Client, host, project, tag string, limit, offset int) ([]Workflow, error) {
-	if limit > maxListPageSize {
-		limit = maxListPageSize
-	}
-
 	query := url.Values{}
 	query.Set("limit", strconv.Itoa(limit))
 	if offset > 0 {
