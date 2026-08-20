@@ -32,17 +32,135 @@ func workflowStatus(enabled bool) string {
 	return "paused"
 }
 
+// maxListPageSize is the per-request page size cap GET /api/workflows
+// enforces (requests above this are rejected with a 400 invalid_input). The
+// endpoint supports real offset-based pagination via &offset=, with a page
+// shorter than the requested limit as the authoritative end-of-list signal,
+// so "kh workflow list" pages through it internally rather than being
+// limited to a single request.
+const maxListPageSize = 200
+
+// fetchWorkflowPage performs one GET /api/workflows request at the given
+// offset and decodes the result. limit is clamped to maxListPageSize before
+// being sent, since the API rejects anything higher with a 400.
+func fetchWorkflowPage(client *khhttp.Client, host, project, tag string, limit, offset int) ([]Workflow, error) {
+	if limit > maxListPageSize {
+		limit = maxListPageSize
+	}
+
+	query := url.Values{}
+	query.Set("limit", strconv.Itoa(limit))
+	if offset > 0 {
+		query.Set("offset", strconv.Itoa(offset))
+	}
+	if project != "" {
+		query.Set("projectId", project)
+	}
+	if tag != "" {
+		query.Set("tagId", tag)
+	}
+	reqURL := khhttp.BuildBaseURL(host) + "/api/workflows?" + query.Encode()
+
+	req, err := client.NewRequest(http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("executing request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, cmdutil.NotFoundError{Err: errors.New("workflows not found")}
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, cmdutil.RateLimitError{Err: errors.New("rate limit exceeded")}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, khhttp.NewAPIError(resp)
+	}
+
+	var workflows []Workflow
+	if err := json.NewDecoder(resp.Body).Decode(&workflows); err != nil {
+		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+	return workflows, nil
+}
+
+// fetchWorkflows pages through GET /api/workflows via &offset=, accumulating
+// results until either limit results have been collected (limit <= 0 means
+// unlimited, i.e. --all) or a page comes back shorter than requested, which
+// the API guarantees means there is nothing left.
+//
+// When the loop stops because limit was reached rather than because the
+// list ended, it issues one more 1-row probe request so hasMore reports
+// accurately whether more workflows exist, instead of guessing from a full
+// final page.
+func fetchWorkflows(client *khhttp.Client, host, project, tag string, limit int) (result []Workflow, hasMore bool, err error) {
+	offset := 0
+	for {
+		pageSize := maxListPageSize
+		if limit > 0 {
+			remaining := limit - len(result)
+			if remaining <= 0 {
+				break
+			}
+			if remaining < pageSize {
+				pageSize = remaining
+			}
+		}
+
+		page, err := fetchWorkflowPage(client, host, project, tag, pageSize, offset)
+		if err != nil {
+			return nil, false, err
+		}
+		result = append(result, page...)
+		offset += len(page)
+
+		if len(page) < pageSize {
+			// A short page is the API's own end-of-list signal.
+			return result, false, nil
+		}
+	}
+
+	if limit > 0 {
+		probe, err := fetchWorkflowPage(client, host, project, tag, 1, offset)
+		if err != nil {
+			return nil, false, err
+		}
+		hasMore = len(probe) > 0
+	}
+	return result, hasMore, nil
+}
+
 func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "List workflows",
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
+		Long: fmt.Sprintf(`List workflows.
+
+GET /api/workflows caps each underlying request at %d results, but supports
+real pagination via &offset=, so "kh wf ls" pages through it internally: with
+--limit N, it fetches as many %d-result pages as needed to collect N results
+(or fewer if the org runs out first). If more results exist beyond --limit,
+a note is printed to stderr.
+
+Pass --all to ignore --limit and fetch every matching workflow, paging until
+the API reports the end of the list. --project and --tag can be combined
+with either form to scope the (possibly paginated) query to one project or
+tag.`, maxListPageSize, maxListPageSize),
 		Example: `  # List workflows
   kh wf ls
 
-  # List with a higher limit
-  kh wf ls --limit 5
+  # List with a higher limit (paginates internally past 200 if needed)
+  kh wf ls --limit 500
+
+  # List every workflow in the org, paginating past the API's page cap
+  kh wf ls --all
 
   # List workflows in a project or with a tag
   kh wf ls --project proj_123
@@ -73,46 +191,27 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
+			all, err := cmd.Flags().GetBool("all")
+			if err != nil {
+				return err
+			}
+
+			// --all means "every workflow"; don't let the --limit default
+			// (meant to bound a single page) cap the paginated result unless
+			// the caller explicitly asked for a limit too.
+			effectiveLimit := limit
+			if all && !cmd.Flags().Changed("limit") {
+				effectiveLimit = 0
+			}
+
 			host := cmdutil.ResolveHost(cmd, cfg)
-			query := url.Values{}
-			query.Set("limit", strconv.Itoa(limit))
-			if project != "" {
-				query.Set("projectId", project)
-			}
-			if tag != "" {
-				query.Set("tagId", tag)
-			}
-			reqURL := khhttp.BuildBaseURL(host) + "/api/workflows?" + query.Encode()
 
-			req, err := client.NewRequest(http.MethodGet, reqURL, nil)
+			workflows, hasMore, err := fetchWorkflows(client, host, project, tag, effectiveLimit)
 			if err != nil {
-				return fmt.Errorf("building request: %w", err)
+				return err
 			}
-
-			resp, err := client.Do(req)
-			if err != nil {
-				return fmt.Errorf("executing request: %w", err)
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode == http.StatusNotFound {
-				return cmdutil.NotFoundError{Err: errors.New("workflows not found")}
-			}
-			if resp.StatusCode == http.StatusTooManyRequests {
-				return cmdutil.RateLimitError{Err: errors.New("rate limit exceeded")}
-			}
-			if resp.StatusCode != http.StatusOK {
-				return khhttp.NewAPIError(resp)
-			}
-
-			var workflows []Workflow
-			if err := json.NewDecoder(resp.Body).Decode(&workflows); err != nil {
-				return fmt.Errorf("decoding response: %w", err)
-			}
-
-			// Apply limit client-side (server does not support ?limit yet)
-			if limit > 0 && limit < len(workflows) {
-				workflows = workflows[:limit]
+			if hasMore {
+				fmt.Fprintf(f.IOStreams.ErrOut, "note: more workflows exist beyond --limit %d; pass --all for the complete list, or increase --limit.\n", effectiveLimit)
 			}
 
 			p := output.NewPrinter(f.IOStreams, cmd)
@@ -132,9 +231,10 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int("limit", 30, "Maximum number of workflows to list")
+	cmd.Flags().Int("limit", 30, "Maximum number of workflows to list (paginates internally past the API's per-request cap)")
 	cmd.Flags().String("project", "", "Filter workflows by project ID")
 	cmd.Flags().String("tag", "", "Filter workflows by tag ID")
+	cmd.Flags().Bool("all", false, "List every matching workflow, ignoring --limit and paginating until the list ends")
 
 	return cmd
 }
