@@ -2,6 +2,24 @@
 
 List workflows
 
+### Synopsis
+
+List workflows.
+
+GET /api/workflows caps each underlying request at 200 results, but supports
+real pagination via &offset=, so "kh wf ls" pages through it internally.
+With --limit N, it requests up to 200 results at a time, only as many times
+as needed to collect N total, with the final request sized to whatever
+remains rather than a full page (or fewer results overall if the org runs
+out first). If more results exist beyond --limit, a note is printed to
+stderr.
+
+Pass --all to fetch every matching workflow: it drops the default --limit of
+30 and pages until the API reports the end of the list. An explicit --limit
+passed alongside --all still bounds the result to that count, same as
+without --all. --project and --tag can be combined with either form to
+scope the (possibly paginated) query to one project or tag.
+
 ```
 kh workflow list [flags]
 ```
@@ -12,8 +30,11 @@ kh workflow list [flags]
   # List workflows
   kh wf ls
 
-  # List with a higher limit
-  kh wf ls --limit 5
+  # List with a higher limit (paginates internally, up to 200 per request)
+  kh wf ls --limit 500
+
+  # List every workflow in the org, paginating past the API's page cap
+  kh wf ls --all
 
   # List workflows in a project or with a tag
   kh wf ls --project proj_123
@@ -23,8 +44,9 @@ kh workflow list [flags]
 ### Options
 
 ```
+      --all              List every matching workflow, dropping the default --limit (an explicit --limit still bounds the result) and paginating until the list ends
   -h, --help             help for list
-      --limit int        Maximum number of workflows to list (default 30)
+      --limit int        Maximum number of workflows to list (paginates internally past the API's per-request cap) (default 30)
       --project string   Filter workflows by project ID
       --tag string       Filter workflows by tag ID
 ```
