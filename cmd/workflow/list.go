@@ -38,6 +38,13 @@ func workflowStatus(enabled bool) string {
 // shorter than the requested limit as the authoritative end-of-list signal,
 // so "kh workflow list" pages through it internally rather than being
 // limited to a single request.
+//
+// This value is hand-copied from the API's MAX_PAGE_SIZE in
+// lib/pagination.ts (keeperhub/keeperhub, imported by
+// app/api/workflows/route.ts) and nothing here detects drift: if the server
+// lowers the cap, every "kh wf ls" request 400s until this is updated to
+// match; if it raises the cap, this just costs more round trips than
+// necessary. Check that file if list requests start failing unexpectedly.
 const maxListPageSize = 200
 
 // fetchWorkflowPage performs one GET /api/workflows request at the given
