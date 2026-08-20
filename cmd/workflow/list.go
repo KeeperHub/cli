@@ -211,7 +211,11 @@ tag.`, maxListPageSize, maxListPageSize),
 				return err
 			}
 			if hasMore {
-				fmt.Fprintf(f.IOStreams.ErrOut, "note: more workflows exist beyond --limit %d; pass --all for the complete list, or increase --limit.\n", effectiveLimit)
+				if all {
+					fmt.Fprintf(f.IOStreams.ErrOut, "note: more workflows exist beyond --limit %d; remove --limit for the complete list, or increase --limit.\n", effectiveLimit)
+				} else {
+					fmt.Fprintf(f.IOStreams.ErrOut, "note: more workflows exist beyond --limit %d; pass --all for the complete list, or increase --limit.\n", effectiveLimit)
+				}
 			}
 
 			p := output.NewPrinter(f.IOStreams, cmd)
