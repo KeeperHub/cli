@@ -153,10 +153,12 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Long: fmt.Sprintf(`List workflows.
 
 GET /api/workflows caps each underlying request at %d results, but supports
-real pagination via &offset=, so "kh wf ls" pages through it internally: with
---limit N, it fetches as many %d-result pages as needed to collect N results
-(or fewer if the org runs out first). If more results exist beyond --limit,
-a note is printed to stderr.
+real pagination via &offset=, so "kh wf ls" pages through it internally.
+With --limit N, it requests up to %d results at a time, only as many times
+as needed to collect N total, with the final request sized to whatever
+remains rather than a full page (or fewer results overall if the org runs
+out first). If more results exist beyond --limit, a note is printed to
+stderr.
 
 Pass --all to fetch every matching workflow: it drops the default --limit of
 30 and pages until the API reports the end of the list. An explicit --limit
@@ -166,7 +168,7 @@ scope the (possibly paginated) query to one project or tag.`, maxListPageSize, m
 		Example: `  # List workflows
   kh wf ls
 
-  # List with a higher limit (paginates internally past 200 if needed)
+  # List with a higher limit (paginates internally, up to 200 per request)
   kh wf ls --limit 500
 
   # List every workflow in the org, paginating past the API's page cap
