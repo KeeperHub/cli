@@ -149,10 +149,11 @@ real pagination via &offset=, so "kh wf ls" pages through it internally: with
 (or fewer if the org runs out first). If more results exist beyond --limit,
 a note is printed to stderr.
 
-Pass --all to ignore --limit and fetch every matching workflow, paging until
-the API reports the end of the list. --project and --tag can be combined
-with either form to scope the (possibly paginated) query to one project or
-tag.`, maxListPageSize, maxListPageSize),
+Pass --all to fetch every matching workflow: it drops the default --limit of
+30 and pages until the API reports the end of the list. An explicit --limit
+passed alongside --all still bounds the result to that count, same as
+without --all. --project and --tag can be combined with either form to
+scope the (possibly paginated) query to one project or tag.`, maxListPageSize, maxListPageSize),
 		Example: `  # List workflows
   kh wf ls
 
@@ -238,7 +239,7 @@ tag.`, maxListPageSize, maxListPageSize),
 	cmd.Flags().Int("limit", 30, "Maximum number of workflows to list (paginates internally past the API's per-request cap)")
 	cmd.Flags().String("project", "", "Filter workflows by project ID")
 	cmd.Flags().String("tag", "", "Filter workflows by tag ID")
-	cmd.Flags().Bool("all", false, "List every matching workflow, ignoring --limit and paginating until the list ends")
+	cmd.Flags().Bool("all", false, "List every matching workflow, dropping the default --limit (an explicit --limit still bounds the result) and paginating until the list ends")
 
 	return cmd
 }
