@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.16.0](https://github.com/KeeperHub/cli/compare/v0.15.0...v0.16.0) (2026-08-20)
+
+
+### Features
+
+* enable pagination ([daa3328](https://github.com/KeeperHub/cli/commit/daa33288d0790678dea6167b5994b964431152de))
+* paginate list past the API's page cap ([99d9d03](https://github.com/KeeperHub/cli/commit/99d9d037f3323db2c739a64bcedc6627976f0023))
+
+
+### Bug Fixes
+
+* **workflow:** reject --limit below 1 instead of paginating everything ([400d685](https://github.com/KeeperHub/cli/commit/400d685e2f70d978503c4bd63d14046862889431))
+* **workflow:** stop clamping list page size before the API call ([b2234e4](https://github.com/KeeperHub/cli/commit/b2234e43b5991d9e116a18e230beeaedc97936fe))
+
 ## [0.15.0](https://github.com/KeeperHub/cli/compare/v0.14.1...v0.15.0) (2026-08-18)
 
 
