@@ -51,7 +51,7 @@ kh protocol list                   # Browse available protocols
 The recommended way to connect AI assistants to KeeperHub is the remote HTTP endpoint:
 
 ```
-claude mcp add --transport http keeperhub https://app.keeperhub.com/mcp
+claude mcp add --transport http --scope user keeperhub https://app.keeperhub.com/mcp
 ```
 
 No local server process required. See [docs/quickstart.md](docs/quickstart.md) for full setup instructions.
