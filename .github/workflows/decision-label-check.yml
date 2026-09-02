@@ -27,7 +27,6 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     branches:
       - main
-      - main
 
 permissions:
   contents: read
