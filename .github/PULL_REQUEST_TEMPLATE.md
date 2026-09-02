@@ -4,7 +4,8 @@ Title format:  <type>: #<issue> <description>
     fix(execute): #98 bound a hung request under --watch --timeout
 
 The issue must carry the `accepted` label before you open this. See ISSUES.md.
-Exempt: docs / chore / style changes from the "no issue required" list.
+Exempt: docs / chore / style / release changes from the "no issue required" list.
+`Closes #97` below, or an `issue-97` branch name, satisfies the check too.
 The type prefix drives release-please, so keep it accurate.
 -->
 

@@ -10,7 +10,8 @@ before the pull request. **[ISSUES.md](ISSUES.md) is the policy** - what needs a
 issue, what goes straight to a pull request, and what happens after you file one.
 
 The short version: open an issue, wait for the `accepted` label, then reference
-it in your pull request title (`feat: #97 description`). Typos, help-text
+it in your pull request title (`feat: #97 description`), its description, or
+an `issue-97` branch name. Typos, help-text
 wording, and docs matching existing behaviour skip all of that.
 
 ## Development setup
