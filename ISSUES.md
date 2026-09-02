@@ -95,22 +95,28 @@ the other to be correct, and the timeout changed behaviour for every existing
 
 Once your issue carries `accepted`:
 
-1. **Reference the issue in the pull request title**, after the conventional
-   commit type:
+1. **Reference the issue from the pull request.** The title is the place for
+   it, after the conventional commit type:
 
    ```
    feat: #97 add --require-verified to execute status
    fix(execute): #98 bound a hung request under --watch --timeout
    ```
 
-   The type prefix drives release-please, so keep it accurate.
+   `Closes #97` in the description or an `issue-97` branch name also satisfies
+   the check; a bare number in a branch name does not. The type prefix drives
+   release-please, so keep it accurate.
 
 2. Fill in the pull request template.
 
 3. Target `main`. This repo has no `staging` branch.
 
-`docs`, `chore`, and `style` pull requests are exempt from the issue check
-automatically. A maintainer can apply `no-issue-required` to exempt anything else.
+`docs`, `chore`, `style` and `release` pull requests are exempt from the issue
+check automatically. A maintainer can apply `no-issue-required` to exempt
+anything else.
+
+Once your issue is labelled `accepted`, the check re-runs on its own and turns
+green - there is nothing to re-trigger by hand.
 
 ## Security
 
