@@ -78,7 +78,7 @@ func NewUsageCmd(f *cmdutil.Factory) *cobra.Command {
 				pct = (sub.Usage.Executions * 100) / sub.Usage.Limit
 			}
 			fmt.Fprintf(f.IOStreams.Out, "Executions:  %d / %d (%d%% used)\n", sub.Usage.Executions, sub.Usage.Limit, pct)
-			fmt.Fprintf(f.IOStreams.Out, "Overage:     $%.2f\n", sub.OverageCharges)
+			fmt.Fprintf(f.IOStreams.Out, "Overage:     $%.2f\n", sub.TotalOverageDollars())
 			return nil
 		},
 	}

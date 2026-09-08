@@ -38,10 +38,20 @@ func makeSubscriptionResponse() map[string]interface{} {
 			"status": "active",
 		},
 		"usage": map[string]interface{}{
-			"executions": 450,
-			"limit":      1000,
+			"executionsUsed": 450,
+			"executionLimit": 1000,
 		},
-		"overageCharges": 0.0,
+		"overageCharges": []map[string]interface{}{
+			{
+				"periodStart":       "2026-08-01T00:00:00.000Z",
+				"periodEnd":         "2026-09-01T00:00:00.000Z",
+				"overageCount":      120,
+				"totalChargeCents":  350,
+				"status":            "pending",
+				"createdAt":         "2026-09-01T00:00:00.000Z",
+				"providerInvoiceId": nil,
+			},
+		},
 		"limits": map[string]interface{}{
 			"maxWorkflows": 50,
 		},
@@ -71,6 +81,75 @@ func TestStatusCmd(t *testing.T) {
 	out := outBuf.String()
 	assert.Contains(t, out, "Pro")
 	assert.Contains(t, out, "active")
+}
+
+// realServerSubscriptionPayload mirrors GET /api/billing/subscription, where
+// overageCharges is an array of recent billing line-items (not a scalar).
+const realServerSubscriptionPayload = `{
+  "subscription": {"plan": "Pro", "status": "active"},
+  "usage": {"executionsUsed": 450, "executionLimit": 1000},
+  "overageCharges": [
+    {"periodStart": "2026-08-01T00:00:00.000Z", "periodEnd": "2026-09-01T00:00:00.000Z", "overageCount": 120, "totalChargeCents": 350, "status": "pending", "createdAt": "2026-09-01T00:00:00.000Z", "providerInvoiceId": null},
+    {"periodStart": "2026-07-01T00:00:00.000Z", "periodEnd": "2026-08-01T00:00:00.000Z", "overageCount": 40, "totalChargeCents": 125, "status": "paid", "createdAt": "2026-08-01T00:00:00.000Z", "providerInvoiceId": "in_123"}
+  ],
+  "limits": {"maxWorkflows": 50}
+}`
+
+func TestSubscriptionResponse_DecodesOverageChargesArray(t *testing.T) {
+	var sub billing.SubscriptionResponse
+	err := json.Unmarshal([]byte(realServerSubscriptionPayload), &sub)
+	require.NoError(t, err, "real server payload with overageCharges array must decode without error")
+
+	require.Len(t, sub.OverageCharges, 2)
+	assert.Equal(t, 350, sub.OverageCharges[0].TotalChargeCents)
+	assert.Equal(t, "pending", sub.OverageCharges[0].Status)
+	assert.Nil(t, sub.OverageCharges[0].ProviderInvoiceID)
+	require.NotNil(t, sub.OverageCharges[1].ProviderInvoiceID)
+	assert.Equal(t, "in_123", *sub.OverageCharges[1].ProviderInvoiceID)
+
+	// Only the pending, not-yet-invoiced record (350c) counts toward what is
+	// owed; the paid+invoiced record (125c) is excluded -> $3.50.
+	assert.InDelta(t, 3.50, sub.TotalOverageDollars(), 1e-9)
+}
+
+func TestTotalOverageDollars_ExcludesInvoicedAndNonPending(t *testing.T) {
+	invoiceID := "in_1"
+	sub := billing.SubscriptionResponse{
+		OverageCharges: []billing.OverageCharge{
+			{TotalChargeCents: 350, Status: "pending", ProviderInvoiceID: nil},        // owed
+			{TotalChargeCents: 125, Status: "paid", ProviderInvoiceID: &invoiceID},     // already invoiced
+			{TotalChargeCents: 200, Status: "billed", ProviderInvoiceID: nil},          // not pending
+		},
+	}
+	// Matches the billing UI: only providerInvoiceId==nil AND status=="pending".
+	assert.InDelta(t, 3.50, sub.TotalOverageDollars(), 1e-9)
+}
+
+func TestSubscriptionResponse_DecodesUsage(t *testing.T) {
+	var sub billing.SubscriptionResponse
+	err := json.Unmarshal([]byte(realServerSubscriptionPayload), &sub)
+	require.NoError(t, err)
+
+	// The server sends usage.executionsUsed / usage.executionLimit; a struct
+	// tagged executions/limit silently decodes these to zero, so the command
+	// reports "0 / 0" regardless of real usage.
+	assert.Equal(t, 450, sub.Usage.Executions)
+	assert.Equal(t, 1000, sub.Usage.Limit)
+}
+
+func TestStatusCmd_OverageChargesArray(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(realServerSubscriptionPayload))
+	}))
+	defer server.Close()
+
+	ios, outBuf, _, _ := iostreams.Test()
+	f := newBillingFactory(server, ios)
+
+	err := runBillingViaParent(f, []string{"st"})
+	require.NoError(t, err, "overageCharges array must not crash response decoding")
+	assert.Contains(t, outBuf.String(), "Overage:     $3.50")
 }
 
 func TestStatusCmd_NotEnabled(t *testing.T) {
