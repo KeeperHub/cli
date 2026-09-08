@@ -37,11 +37,17 @@ type OverageCharge struct {
 	ProviderInvoiceID *string `json:"providerInvoiceId"`
 }
 
-// TotalOverageDollars sums the recent overage line-item charges, in dollars.
+// TotalOverageDollars sums the overage charges that will be added to the next
+// invoice, in dollars: pending line-items not yet pushed to a provider invoice.
+// Records already invoiced (providerInvoiceId set) or in any non-pending status
+// are excluded, matching the billing UI, so the figure reflects what is
+// currently owed rather than a rolling sum that re-bills settled charges.
 func (s SubscriptionResponse) TotalOverageDollars() float64 {
 	cents := 0
 	for _, c := range s.OverageCharges {
-		cents += c.TotalChargeCents
+		if c.ProviderInvoiceID == nil && c.Status == "pending" {
+			cents += c.TotalChargeCents
+		}
 	}
 	return float64(cents) / 100
 }

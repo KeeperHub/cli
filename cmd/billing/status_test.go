@@ -107,8 +107,22 @@ func TestSubscriptionResponse_DecodesOverageChargesArray(t *testing.T) {
 	require.NotNil(t, sub.OverageCharges[1].ProviderInvoiceID)
 	assert.Equal(t, "in_123", *sub.OverageCharges[1].ProviderInvoiceID)
 
-	// 350 + 125 cents = $4.75
-	assert.InDelta(t, 4.75, sub.TotalOverageDollars(), 1e-9)
+	// Only the pending, not-yet-invoiced record (350c) counts toward what is
+	// owed; the paid+invoiced record (125c) is excluded -> $3.50.
+	assert.InDelta(t, 3.50, sub.TotalOverageDollars(), 1e-9)
+}
+
+func TestTotalOverageDollars_ExcludesInvoicedAndNonPending(t *testing.T) {
+	invoiceID := "in_1"
+	sub := billing.SubscriptionResponse{
+		OverageCharges: []billing.OverageCharge{
+			{TotalChargeCents: 350, Status: "pending", ProviderInvoiceID: nil},        // owed
+			{TotalChargeCents: 125, Status: "paid", ProviderInvoiceID: &invoiceID},     // already invoiced
+			{TotalChargeCents: 200, Status: "billed", ProviderInvoiceID: nil},          // not pending
+		},
+	}
+	// Matches the billing UI: only providerInvoiceId==nil AND status=="pending".
+	assert.InDelta(t, 3.50, sub.TotalOverageDollars(), 1e-9)
 }
 
 func TestSubscriptionResponse_DecodesUsage(t *testing.T) {
@@ -135,7 +149,7 @@ func TestStatusCmd_OverageChargesArray(t *testing.T) {
 
 	err := runBillingViaParent(f, []string{"st"})
 	require.NoError(t, err, "overageCharges array must not crash response decoding")
-	assert.Contains(t, outBuf.String(), "Overage:     $4.75")
+	assert.Contains(t, outBuf.String(), "Overage:     $3.50")
 }
 
 func TestStatusCmd_NotEnabled(t *testing.T) {
