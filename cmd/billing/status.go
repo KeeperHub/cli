@@ -21,8 +21,29 @@ type SubscriptionResponse struct {
 		Executions int `json:"executions"`
 		Limit      int `json:"limit"`
 	} `json:"usage"`
-	OverageCharges float64                `json:"overageCharges"`
+	OverageCharges []OverageCharge        `json:"overageCharges"`
 	Limits         map[string]interface{} `json:"limits"`
+}
+
+// OverageCharge is one recent overage billing line-item returned in the
+// overageCharges array of GET /api/billing/subscription.
+type OverageCharge struct {
+	PeriodStart       string  `json:"periodStart"`
+	PeriodEnd         string  `json:"periodEnd"`
+	OverageCount      int     `json:"overageCount"`
+	TotalChargeCents  int     `json:"totalChargeCents"`
+	Status            string  `json:"status"`
+	CreatedAt         string  `json:"createdAt"`
+	ProviderInvoiceID *string `json:"providerInvoiceId"`
+}
+
+// TotalOverageDollars sums the recent overage line-item charges, in dollars.
+func (s SubscriptionResponse) TotalOverageDollars() float64 {
+	cents := 0
+	for _, c := range s.OverageCharges {
+		cents += c.TotalChargeCents
+	}
+	return float64(cents) / 100
 }
 
 func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
@@ -82,7 +103,7 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 			fmt.Fprintf(f.IOStreams.Out, "Plan:        %s\n", sub.Subscription.Plan)
 			fmt.Fprintf(f.IOStreams.Out, "Status:      %s\n", sub.Subscription.Status)
 			fmt.Fprintf(f.IOStreams.Out, "Executions:  %d / %d\n", sub.Usage.Executions, sub.Usage.Limit)
-			fmt.Fprintf(f.IOStreams.Out, "Overage:     $%.2f\n", sub.OverageCharges)
+			fmt.Fprintf(f.IOStreams.Out, "Overage:     $%.2f\n", sub.TotalOverageDollars())
 			return nil
 		},
 	}
