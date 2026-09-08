@@ -18,8 +18,8 @@ type SubscriptionResponse struct {
 		Status string `json:"status"`
 	} `json:"subscription"`
 	Usage struct {
-		Executions int `json:"executions"`
-		Limit      int `json:"limit"`
+		Executions int `json:"executionsUsed"`
+		Limit      int `json:"executionLimit"`
 	} `json:"usage"`
 	OverageCharges []OverageCharge        `json:"overageCharges"`
 	Limits         map[string]interface{} `json:"limits"`

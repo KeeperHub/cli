@@ -38,8 +38,8 @@ func makeSubscriptionResponse() map[string]interface{} {
 			"status": "active",
 		},
 		"usage": map[string]interface{}{
-			"executions": 450,
-			"limit":      1000,
+			"executionsUsed": 450,
+			"executionLimit": 1000,
 		},
 		"overageCharges": []map[string]interface{}{
 			{
@@ -109,6 +109,18 @@ func TestSubscriptionResponse_DecodesOverageChargesArray(t *testing.T) {
 
 	// 350 + 125 cents = $4.75
 	assert.InDelta(t, 4.75, sub.TotalOverageDollars(), 1e-9)
+}
+
+func TestSubscriptionResponse_DecodesUsage(t *testing.T) {
+	var sub billing.SubscriptionResponse
+	err := json.Unmarshal([]byte(realServerSubscriptionPayload), &sub)
+	require.NoError(t, err)
+
+	// The server sends usage.executionsUsed / usage.executionLimit; a struct
+	// tagged executions/limit silently decodes these to zero, so the command
+	// reports "0 / 0" regardless of real usage.
+	assert.Equal(t, 450, sub.Usage.Executions)
+	assert.Equal(t, 1000, sub.Usage.Limit)
 }
 
 func TestStatusCmd_OverageChargesArray(t *testing.T) {
